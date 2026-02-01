@@ -256,11 +256,99 @@ export async function closeFollowUp(followUpId, doctorId, resolution) {
 }
 
 // ============================================================================
+// ADVERSE EVENT APIs (Pharmacovigilance)
+// ============================================================================
+
+/**
+ * Report a new adverse event
+ * 
+ * @param {object} data - Adverse event report data
+ * @returns {Promise<object>} Case ID and follow-up details
+ * 
+ * BACKEND: POST /api/adverse-events
+ */
+export async function reportAdverseEvent(data) {
+    return apiCall('/adverse-events', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+/**
+ * Verify OTP for adverse event follow-up
+ * 
+ * @param {string} adverseEventId - Adverse event document ID
+ * @param {string} otp - OTP entered by patient
+ * @returns {Promise<object>} Verification result
+ * 
+ * BACKEND: POST /api/adverse-events/:id/verify-otp
+ */
+export async function verifyAdverseEventOTP(adverseEventId, otp) {
+    return apiCall(`/adverse-events/${adverseEventId}/verify-otp`, {
+        method: 'POST',
+        body: JSON.stringify({ otp }),
+    });
+}
+
+/**
+ * Get smart follow-up questions for adverse event
+ * 
+ * @param {string} adverseEventId - Adverse event document ID
+ * @returns {Promise<object>} Questions array and case info
+ * 
+ * BACKEND: GET /api/adverse-events/:id/questions
+ */
+export async function getAdverseEventQuestions(adverseEventId) {
+    return apiCall(`/adverse-events/${adverseEventId}/questions`);
+}
+
+/**
+ * Submit adverse event follow-up responses
+ * 
+ * @param {string} adverseEventId - Adverse event document ID
+ * @param {object} data - Responses and consent
+ * @returns {Promise<object>} Case assessment result
+ * 
+ * BACKEND: POST /api/adverse-events/:id/submit
+ */
+export async function submitAdverseEventFollowUp(adverseEventId, data) {
+    return apiCall(`/adverse-events/${adverseEventId}/submit`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+/**
+ * Get adverse event case (for doctor)
+ * 
+ * @param {string} adverseEventId - Adverse event document ID
+ * @param {string} doctorId - Doctor's ID for authorization
+ * @returns {Promise<object>} Complete case data
+ * 
+ * BACKEND: GET /api/adverse-events/:id/case
+ */
+export async function getAdverseEventCase(adverseEventId, doctorId) {
+    return apiCall(`/adverse-events/${adverseEventId}/case?doctorId=${doctorId}`);
+}
+
+/**
+ * Get all adverse events for a doctor
+ * 
+ * @param {string} doctorId - Doctor's user ID
+ * @returns {Promise<object>} Array of adverse events
+ * 
+ * BACKEND: GET /api/adverse-events/doctor/:doctorId
+ */
+export async function getAdverseEventsByDoctor(doctorId) {
+    return apiCall(`/adverse-events/doctor/${doctorId}`);
+}
+
+// ============================================================================
 // DEFAULT EXPORT
 // Exports all functions as an object for alternative import style
 // ============================================================================
 
-export default {
+const api = {
     createPrescription,
     getDoctorPrescriptions,
     getPrescription,
@@ -271,4 +359,17 @@ export default {
     getFollowUpSummary,
     getDoctorFollowUps,
     closeFollowUp,
+    // Adverse Event APIs
+    reportAdverseEvent,
+    verifyAdverseEventOTP,
+    getAdverseEventQuestions,
+    submitAdverseEventFollowUp,
+    getAdverseEventCase,
+    getAdverseEventsByDoctor,
 };
+
+// Named export for destructured imports: import { api } from './api'
+export { api };
+
+// Default export for: import api from './api'
+export default api;

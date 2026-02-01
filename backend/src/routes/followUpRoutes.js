@@ -405,12 +405,6 @@ router.get('/:id/drafts', async (req, res) => {
         });
     }
 });
-        res.status(500).json({
-            success: false,
-            error: 'Failed to get draft statements',
-        });
-    }
-});
 
 // ============================================================================
 // STEPS 6-7: SUBMIT FOLLOW-UP (Patient Consent & Submission)

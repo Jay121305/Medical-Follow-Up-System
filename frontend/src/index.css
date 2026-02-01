@@ -336,6 +336,37 @@ a:hover {
   width: 100%;
 }
 
+/* Voice/Mic Button - Speech to Text */
+.btn-mic {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-mic:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-mic.listening {
+  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+  animation: pulse-mic 1s infinite;
+}
+
+@keyframes pulse-mic {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
 /* ===== Form Components ===== */
 .form-group {
   margin-bottom: var(--spacing-lg);

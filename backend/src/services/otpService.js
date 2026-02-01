@@ -86,23 +86,27 @@ function generateOTP() {
 // ============================================================================
 
 /**
- * Create and store OTP for a follow-up request
+ * Create and store OTP for a follow-up or adverse event request
  * 
  * This function:
  * 1. Generates a new random OTP
  * 2. Calculates expiration time
- * 3. Stores both in the follow-up document
+ * 3. Stores both in the document
  * 4. Resets verification status and attempt counter
  * 
- * @param {string} followUpId - The Firestore document ID for the follow-up
+ * @param {string} docId - The Firestore document ID
+ * @param {string} collectionType - 'followUp' or 'adverseEvent'
  * @returns {Promise<{otp: string, expiresAt: Date}>} The OTP and expiration time
  */
-async function createOTP(followUpId) {
+async function createOTP(docId, collectionType = 'followUp') {
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-    // Update the follow-up document with OTP data
-    await db.collection('followUps').doc(followUpId).update({
+    // Determine which collection to use
+    const collectionName = collectionType === 'adverseEvent' ? 'adverseEvents' : 'followUps';
+
+    // Update the document with OTP data
+    await db.collection(collectionName).doc(docId).update({
         otp: otp,                  // The actual OTP value
         otpExpiresAt: expiresAt,   // When it becomes invalid
         otpVerified: false,        // Reset verification status
@@ -117,29 +121,33 @@ async function createOTP(followUpId) {
 // ============================================================================
 
 /**
- * Verify OTP for a follow-up request
+ * Verify OTP for a follow-up or adverse event request
  * 
  * SECURITY CHECKS PERFORMED:
- * 1. Follow-up document exists
+ * 1. Document exists
  * 2. OTP not already verified (prevent replay attacks)
  * 3. OTP not expired
  * 4. Attempt limit not exceeded (brute-force protection)
  * 5. OTP matches
  * 
- * @param {string} followUpId - The follow-up document ID
+ * @param {string} docId - The document ID
  * @param {string} providedOTP - The OTP entered by the patient
+ * @param {string} collectionType - 'followUp' or 'adverseEvent'
  * @returns {Promise<{success: boolean, message: string}>}
  */
-async function verifyOTP(followUpId, providedOTP) {
-    const followUpRef = db.collection('followUps').doc(followUpId);
-    const followUpDoc = await followUpRef.get();
+async function verifyOTP(docId, providedOTP, collectionType = 'followUp') {
+    // Determine which collection to use
+    const collectionName = collectionType === 'adverseEvent' ? 'adverseEvents' : 'followUps';
+    
+    const docRef = db.collection(collectionName).doc(docId);
+    const docSnapshot = await docRef.get();
 
     // Check 1: Document exists
-    if (!followUpDoc.exists) {
-        return { success: false, message: 'Follow-up request not found' };
+    if (!docSnapshot.exists) {
+        return { success: false, message: 'Request not found' };
     }
 
-    const data = followUpDoc.data();
+    const data = docSnapshot.data();
 
     // Check 2: Not already verified (idempotency)
     // If already verified, just return success - don't force re-verification
@@ -162,7 +170,7 @@ async function verifyOTP(followUpId, providedOTP) {
 
     // Always increment attempt counter (even before checking if correct)
     // This prevents timing attacks
-    await followUpRef.update({
+    await docRef.update({
         otpAttempts: (data.otpAttempts || 0) + 1,
     });
 
@@ -172,7 +180,7 @@ async function verifyOTP(followUpId, providedOTP) {
     }
 
     // SUCCESS: Mark as verified with timestamp
-    await followUpRef.update({
+    await docRef.update({
         otpVerified: true,
         otpVerifiedAt: new Date(),  // Record when verification happened
     });
@@ -185,7 +193,7 @@ async function verifyOTP(followUpId, providedOTP) {
 // ============================================================================
 
 /**
- * Check if OTP is verified for a follow-up
+ * Check if OTP is verified for a follow-up or adverse event
  * 
  * CRITICAL: This function is the GATEKEEPER for medical data access.
  * It MUST be called before:
@@ -194,18 +202,22 @@ async function verifyOTP(followUpId, providedOTP) {
  * - Allowing follow-up form submission
  * - Generating doctor summaries
  * 
- * @param {string} followUpId - The follow-up document ID
+ * @param {string} docId - The document ID
+ * @param {string} collectionType - 'followUp' or 'adverseEvent'
  * @returns {Promise<boolean>} True if OTP was successfully verified
  */
-async function isOTPVerified(followUpId) {
-    const followUpDoc = await db.collection('followUps').doc(followUpId).get();
+async function isOTPVerified(docId, collectionType = 'followUp') {
+    // Determine which collection to use
+    const collectionName = collectionType === 'adverseEvent' ? 'adverseEvents' : 'followUps';
+    
+    const docSnapshot = await db.collection(collectionName).doc(docId).get();
 
-    if (!followUpDoc.exists) {
+    if (!docSnapshot.exists) {
         return false;
     }
 
     // Strict equality check - must be exactly true
-    return followUpDoc.data().otpVerified === true;
+    return docSnapshot.data().otpVerified === true;
 }
 
 // ============================================================================

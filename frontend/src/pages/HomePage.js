@@ -130,6 +130,18 @@ function HomePage({ user }) {
                         </div>
                     </div>
 
+                    {/* ========== ADVERSE EVENT REPORTING ========== */}
+                    {/* Important link for reporting medicine reactions */}
+                    <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+                        <button
+                            className="btn btn-outline"
+                            onClick={() => navigate('/report-adverse-event')}
+                            style={{ borderColor: '#ef4444', color: '#ef4444' }}
+                        >
+                            ⚠️ Report Medicine Side Effect / Adverse Reaction
+                        </button>
+                    </div>
+
                     {/* ========== HOW IT WORKS SECTION ========== */}
                     {/* Explains the 3-step process */}
                     <div style={{ marginTop: '4rem' }}>

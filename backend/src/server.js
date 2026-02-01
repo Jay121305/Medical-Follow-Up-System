@@ -47,6 +47,7 @@ require('dotenv').config();               // Loads environment variables from .e
 const prescriptionRoutes = require('./routes/prescriptionRoutes');  // CRUD for prescriptions
 const followUpRoutes = require('./routes/followUpRoutes');          // Follow-up workflow (OTP, submit, summary)
 const authRoutes = require('./routes/authRoutes');                  // Login/register for doctors and staff
+const adverseEventRoutes = require('./routes/adverseEventRoutes');  // Adverse event reporting (pharmacovigilance)
 
 // ============================================================================
 // EXPRESS APP INITIALIZATION
@@ -133,6 +134,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);                // /api/auth/login, /api/auth/register, etc.
 app.use('/api/prescriptions', prescriptionRoutes); // /api/prescriptions, /api/prescriptions/:id, etc.
 app.use('/api/follow-ups', followUpRoutes);       // /api/follow-ups, /api/follow-ups/:id/verify-otp, etc.
+app.use('/api/adverse-events', adverseEventRoutes); // /api/adverse-events - Pharmacovigilance workflow
 
 // ============================================================================
 // ERROR HANDLING

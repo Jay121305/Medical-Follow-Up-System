@@ -178,8 +178,8 @@ function DoctorDashboard({ user }) {
                 </div>
 
                 {/* ========== QUICK ACTION CARDS ========== */}
-                {/* 3-column grid with clickable action cards */}
-                <div className="grid grid-3 mb-4">
+                {/* 4-column grid with clickable action cards */}
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
                     {/* Create Prescription */}
                     <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/doctor/prescriptions/new')}>
                         <div style={{ fontSize: '2rem' }}>📝</div>
@@ -199,6 +199,17 @@ function DoctorDashboard({ user }) {
                         <div style={{ fontSize: '2rem' }}>📊</div>
                         <h4>Follow-Up Reports</h4>
                         <p className="text-muted text-sm">View patient responses</p>
+                    </div>
+                    
+                    {/* Adverse Events - Safety Reports */}
+                    <div 
+                        className="card" 
+                        style={{ cursor: 'pointer', borderLeft: '4px solid #ef4444' }} 
+                        onClick={() => navigate('/doctor/adverse-events')}
+                    >
+                        <div style={{ fontSize: '2rem' }}>⚠️</div>
+                        <h4>Adverse Events</h4>
+                        <p className="text-muted text-sm">Review safety reports</p>
                     </div>
                 </div>
             </div>

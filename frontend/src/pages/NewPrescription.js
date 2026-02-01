@@ -553,7 +553,7 @@ function NewPrescription({ user }) {
                         <label className="form-label">Patient Name</label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <input type="text" name="patientName" className="form-input" value={formData.patientName} onChange={handleChange} placeholder="John Doe" />
-                            <button type="button" className="btn btn-sm btn-outline" onClick={() => startVoiceInput('form', 'patientName')} title="Voice input">
+                            <button type="button" className="btn-mic" onClick={() => startVoiceInput('form', 'patientName')} title="Voice input">
                                 🎤
                             </button>
                         </div>
@@ -577,7 +577,7 @@ function NewPrescription({ user }) {
                         <label className="form-label">Condition / Diagnosis</label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <input type="text" name="condition" className="form-input" value={formData.condition} onChange={handleChange} placeholder="e.g., Fever, Cold, Headache" />
-                            <button type="button" className="btn btn-sm btn-outline" onClick={() => startVoiceInput('form', 'condition')} title="Voice input">
+                            <button type="button" className="btn-mic" onClick={() => startVoiceInput('form', 'condition')} title="Voice input">
                                 🎤
                             </button>
                         </div>
@@ -614,7 +614,7 @@ function NewPrescription({ user }) {
                                         required={idx === 0}  /* Only first medicine is required */
                                         placeholder="e.g., Paracetamol" 
                                     />
-                                    <button type="button" className="btn btn-sm btn-outline" onClick={() => startVoiceInput('medicine', 'name', idx)} title="Voice input">
+                                    <button type="button" className="btn-mic" onClick={() => startVoiceInput('medicine', 'name', idx)} title="Voice input">
                                         🎤
                                     </button>
                                 </div>
@@ -669,7 +669,7 @@ function NewPrescription({ user }) {
                                         onChange={(e) => handleMedicineChange(idx, 'instructions', e.target.value)} 
                                         placeholder="e.g., After food, with water" 
                                     />
-                                    <button type="button" className="btn btn-sm btn-outline" onClick={() => startVoiceInput('medicine', 'instructions', idx)} title="Voice input">
+                                    <button type="button" className="btn-mic" onClick={() => startVoiceInput('medicine', 'instructions', idx)} title="Voice input">
                                         🎤
                                     </button>
                                 </div>
@@ -689,7 +689,7 @@ function NewPrescription({ user }) {
                         <label className="form-label">Additional Notes</label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <textarea name="notes" className="form-textarea" value={formData.notes} onChange={handleChange} placeholder="Additional instructions for the patient..." />
-                            <button type="button" className="btn btn-sm btn-outline" onClick={() => startVoiceInput('form', 'notes')} title="Voice input" style={{ alignSelf: 'flex-start' }}>
+                            <button type="button" className="btn-mic" onClick={() => startVoiceInput('form', 'notes')} title="Voice input" style={{ alignSelf: 'flex-start' }}>
                                 🎤
                             </button>
                         </div>

@@ -81,6 +81,11 @@ import FollowUpSummary from './pages/FollowUpSummary';
 // Staff Pages (Login + role required)
 import StaffDashboard from './pages/StaffDashboard';
 
+// Adverse Event Pages (Pharmacovigilance)
+import AdverseEventReport from './pages/AdverseEventReport';
+import AdverseEventFollowUp from './pages/AdverseEventFollowUp';
+import AdverseEventsList from './pages/AdverseEventsList';
+
 // ============================================================================
 // MAIN APP COMPONENT
 // ============================================================================
@@ -318,6 +323,21 @@ function App() {
                         <FollowUpSummary user={user} />
                     </ProtectedRoute>
                 } />
+                
+                {/* List all adverse events for this doctor */}
+                <Route path="/doctor/adverse-events" element={
+                    <ProtectedRoute allowedRoles={['doctor']}>
+                        <AdverseEventsList user={user} />
+                    </ProtectedRoute>
+                } />
+
+                {/* ============ ADVERSE EVENT ROUTES ============ */}
+                {/* Report adverse event (can be accessed by anyone) */}
+                <Route path="/report-adverse-event" element={<AdverseEventReport />} />
+                <Route path="/report-adverse-event/:prescriptionId" element={<AdverseEventReport />} />
+                
+                {/* Adverse event follow-up (OTP protected) */}
+                <Route path="/adverse-event/:adverseEventId/follow-up" element={<AdverseEventFollowUp />} />
 
                 {/* ============ STAFF ROUTES (Protected) ============ */}
                 {/* Require login + staff role */}
