@@ -1,7 +1,35 @@
 /**
- * View Prescription Page
- * Public page for patients to view their prescription details
- * Accessible without OTP - only shows prescription info (not follow-up data)
+ * ============================================================================
+ * ViewPrescription.js - Public Prescription View Page
+ * ============================================================================
+ * 
+ * PURPOSE:
+ * Allow patients to view their prescription details without OTP verification.
+ * This is a PUBLIC page - no authentication required.
+ * 
+ * SECURITY NOTE:
+ * - Only shows prescription info (medicine, dosage, instructions)
+ * - Does NOT show follow-up responses or sensitive data
+ * - Safe to share link with patient
+ * 
+ * WHEN USED:
+ * - Doctor may share prescription link with patient
+ * - Patient wants to review their prescription
+ * - Before or after follow-up process
+ * 
+ * DISPLAYED INFO:
+ * - Medicine name
+ * - Dosage instructions
+ * - Duration
+ * - Condition (if specified)
+ * - Doctor's notes
+ * - Prescription status
+ * - Date prescribed
+ * 
+ * URL PATTERN:
+ * /prescription/:id where :id is the prescription document ID
+ * 
+ * ============================================================================
  */
 
 import React, { useState, useEffect } from 'react';

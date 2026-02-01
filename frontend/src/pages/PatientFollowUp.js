@@ -1,12 +1,44 @@
 /**
- * Patient Follow-Up Form - Adverse Event Safety Reporting
- * Optimized for Maximum Data Density with Minimal User Effort
+ * ============================================================================
+ * PatientFollowUp.js - Smart Branching Safety Questionnaire (STEP 5)
+ * ============================================================================
  * 
- * Design Philosophy:
- * - Each question populates MULTIPLE safety fields
- * - Previous answers influence subsequent questions
+ * PURPOSE:
+ * This is the CORE of the patient follow-up flow - a dynamic questionnaire
+ * that adapts based on patient responses. It collects adverse event data
+ * in a regulatory-compliant manner while providing a patient-friendly UX.
+ * 
+ * DESIGN PHILOSOPHY (Important!):
+ * - Each question populates MULTIPLE safety fields for regulatory reporting
+ * - Previous answers influence subsequent questions (smart branching)
  * - Text input is analyzed to adapt follow-up questions
  * - 7-8 questions → regulatory-ready case data
+ * - Minimize patient effort while maximizing data quality
+ * 
+ * THREE BRANCHING PATHS:
+ * 1. POSITIVE PATH (fully_recovered/improving):
+ *    - Short flow: status → adherence → improvement → timeline → end
+ *    - Captures: Recovery data, treatment efficacy
+ * 
+ * 2. ADVERSE PATH (had_problem):
+ *    - Full flow: status → adherence → problem type → onset → symptoms
+ *    - → severity → medical attention → action → outcome → end
+ *    - Captures: Full adverse event report meeting ICH E2B requirements
+ * 
+ * 3. NEUTRAL PATH (same):
+ *    - Minimal flow: status → adherence → other meds → follow-up needs
+ *    - Captures: Treatment continuation decision support
+ * 
+ * REGULATORY COMPLIANCE:
+ * - Meets ICH E2B/E2D requirements for Individual Case Safety Reports
+ * - Captures: Time-to-onset, severity, seriousness, causality indicators
+ * - Supports MedDRA coding for symptoms
+ * - Includes dechallenge/rechallenge data
+ * 
+ * FLOW SEQUENCE:
+ * PatientVerify (STEP 4) → PatientFollowUp (STEP 5) → SuccessPage (STEP 6)
+ * 
+ * ============================================================================
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -15,15 +47,40 @@ import { getFollowUpDrafts, submitFollowUp } from '../services/api';
 import Loading from '../components/Loading';
 import Disclaimer from '../components/Disclaimer';
 
-// ============================================
+// ============================================================================
 // QUESTION DEFINITIONS - SMART BRANCHING FLOW
-// First understand patient status, then branch accordingly
-// ============================================
+// ============================================================================
+// 
+// Each question object contains:
+// - id: Unique identifier for tracking responses
+// - question: Main question text shown to patient
+// - subtext: Explanatory text to help patient understand
+// - options: Array of selectable answers with value, label, icon
+// - textPrompt: Prompt for optional free-text input
+// - dataExtracted: Array of safety fields this question populates
+// - category: Grouping for the question
+// - conditional: Function that returns true if question should be shown
+// - multiSelect: If true, allows selecting multiple options
+//
+// First understand patient status (Q1), then branch accordingly
+// ============================================================================
 
 const QUESTIONS = {
-    // ===== PHASE 1: UNDERSTAND PATIENT STATUS =====
+    // ===================================================================
+    // PHASE 1: UNDERSTAND PATIENT STATUS
+    // These questions are asked of ALL patients to determine branching
+    // ===================================================================
     
-    // Q1: Overall status - THE MOST IMPORTANT FIRST QUESTION
+    /**
+     * Q1: Overall Status - THE MOST IMPORTANT FIRST QUESTION
+     * 
+     * This question determines which path the questionnaire takes:
+     * - fully_recovered/improving → Positive path (6 questions)
+     * - had_problem → Adverse event path (11 questions)
+     * - same → Neutral path (4 questions)
+     * 
+     * CRITICAL: The selected value here controls getQuestionOrder()
+     */
     overallStatus: {
         id: 'overallStatus',
         question: "How are you feeling after taking the prescribed medicine?",
@@ -39,7 +96,13 @@ const QUESTIONS = {
         category: 'status'
     },
 
-    // Q2: Medication adherence - Did they complete the course?
+    /**
+     * Q2: Medication Adherence - Did they complete the course?
+     * 
+     * Important for causality assessment:
+     * - If patient didn't complete course, adverse events may be due to discontinuation
+     * - If patient completed course and had issues, stronger causality signal
+     */
     medicationAdherence: {
         id: 'medicationAdherence',
         question: "Did you complete the full course of medication?",
@@ -55,7 +118,17 @@ const QUESTIONS = {
         category: 'adherence'
     },
 
-    // Q3: Symptom improvement - For those who are recovering/recovered
+    // ===================================================================
+    // PHASE 1b: POSITIVE PATH QUESTIONS
+    // Only shown if overallStatus is 'fully_recovered' or 'improving'
+    // ===================================================================
+
+    /**
+     * Q3: Symptom Improvement (Positive Path)
+     * 
+     * Quantifies treatment efficacy for outcomes tracking
+     * Conditional: Only shown for positive outcomes
+     */
     symptomImprovement: {
         id: 'symptomImprovement',
         question: "How much have your original symptoms improved?",
@@ -69,10 +142,16 @@ const QUESTIONS = {
         textPrompt: "Which symptoms have improved the most?",
         dataExtracted: ['Symptom resolution', 'Treatment efficacy', 'Recovery rate', 'Clinical response'],
         category: 'improvement',
+        // Conditional function - only show for positive outcomes
         conditional: (responses) => ['fully_recovered', 'improving'].includes(responses.overallStatus?.selected)
     },
 
-    // Q4: When did improvement start?
+    /**
+     * Q4: Improvement Timeline (Positive Path)
+     * 
+     * Captures time-to-response for efficacy analysis
+     * Helps doctors understand expected treatment duration
+     */
     improvementTimeline: {
         id: 'improvementTimeline',
         question: "When did you start noticing improvement?",
@@ -89,9 +168,21 @@ const QUESTIONS = {
         conditional: (responses) => ['fully_recovered', 'improving'].includes(responses.overallStatus?.selected)
     },
 
-    // ===== PHASE 2: FOR PATIENTS WITH PROBLEMS =====
+    // ===================================================================
+    // PHASE 2: ADVERSE EVENT PATH QUESTIONS
+    // Only shown if overallStatus is 'had_problem'
+    // These questions capture full ICSR (Individual Case Safety Report) data
+    // ===================================================================
 
-    // Q5: Nature of problem - Only if they had issues
+    /**
+     * Q5: Problem Type (Adverse Path)
+     * 
+     * Classifies the type of adverse experience:
+     * - side_effects: Direct drug-related event
+     * - condition_worse: Treatment failure or worsening
+     * - new_symptoms: Possibly drug-related new condition
+     * - not_working: Treatment inefficacy
+     */
     problemType: {
         id: 'problemType',
         question: "What kind of problem did you experience?",
@@ -108,7 +199,15 @@ const QUESTIONS = {
         conditional: (responses) => responses.overallStatus?.selected === 'had_problem'
     },
 
-    // Q6: Time to onset - When did problem start?
+    /**
+     * Q6: Time to Onset (Adverse Path) - CRITICAL FOR CAUSALITY
+     * 
+     * Time-to-onset is one of the strongest causality indicators:
+     * - Immediate (within 1 hour): Strong causality for allergic reactions
+     * - Same day: Strong causality for GI effects
+     * - 2-7 days: Moderate causality
+     * - After 1 week: Weaker causality unless known delayed effect
+     */
     timeToOnset: {
         id: 'timeToOnset',
         question: "When did this problem start after taking the medicine?",
@@ -126,12 +225,21 @@ const QUESTIONS = {
         conditional: (responses) => responses.overallStatus?.selected === 'had_problem'
     },
 
-    // Q7: Symptoms experienced
+    /**
+     * Q7: Symptoms Experienced (Adverse Path) - MULTI-SELECT
+     * 
+     * Captures specific adverse event terms for MedDRA coding
+     * Multi-select because patients often experience multiple symptoms
+     * 
+     * SERIOUSNESS FLAGS:
+     * - breathing, swelling → Potentially life-threatening (anaphylaxis risk)
+     * These trigger urgent case handling
+     */
     symptoms: {
         id: 'symptoms',
         question: "What symptoms did you experience?",
         subtext: "Select all that apply",
-        multiSelect: true,
+        multiSelect: true,  // Patient can select multiple symptoms
         options: [
             { value: 'nausea', label: 'Nausea / Vomiting', icon: '🤢' },
             { value: 'dizziness', label: 'Dizziness / Lightheadedness', icon: '💫' },
@@ -139,8 +247,8 @@ const QUESTIONS = {
             { value: 'stomach', label: 'Stomach pain / Diarrhea', icon: '😣' },
             { value: 'headache', label: 'Severe headache', icon: '🤕' },
             { value: 'fatigue', label: 'Extreme fatigue / Weakness', icon: '😴' },
-            { value: 'breathing', label: 'Breathing difficulty', icon: '😮‍💨' },
-            { value: 'swelling', label: 'Swelling (face/lips/throat)', icon: '😶' },
+            { value: 'breathing', label: 'Breathing difficulty', icon: '😮‍💨' },  // URGENT FLAG
+            { value: 'swelling', label: 'Swelling (face/lips/throat)', icon: '😶' },  // URGENT FLAG
             { value: 'other', label: 'Other symptoms', icon: '📝' },
         ],
         textPrompt: "Describe your symptoms in detail:",
@@ -149,7 +257,14 @@ const QUESTIONS = {
         conditional: (responses) => responses.overallStatus?.selected === 'had_problem'
     },
 
-    // Q8: Severity
+    /**
+     * Q8: Severity (Adverse Path)
+     * 
+     * Severity grading per regulatory standards:
+     * - mild: Grade 1 - noticeable but no functional impact
+     * - moderate: Grade 2 - some functional limitation
+     * - severe: Grade 3 - significant functional impact
+     */
     severity: {
         id: 'severity',
         question: "How severe was the problem at its worst?",
@@ -165,7 +280,15 @@ const QUESTIONS = {
         conditional: (responses) => responses.overallStatus?.selected === 'had_problem'
     },
 
-    // Q9: Medical attention needed?
+    /**
+     * Q9: Medical Attention Needed (Adverse Path) - SERIOUSNESS CRITERIA
+     * 
+     * Determines seriousness per ICH E2D criteria:
+     * - hospital → SERIOUS: Required hospitalization
+     * - emergency → SERIOUS: Life-threatening or ER visit
+     * - doctor → May be serious depending on intervention
+     * - none → Non-serious (managed at home)
+     */
     medicalAttention: {
         id: 'medicalAttention',
         question: "Did you need medical attention for this problem?",
@@ -182,7 +305,14 @@ const QUESTIONS = {
         conditional: (responses) => responses.overallStatus?.selected === 'had_problem'
     },
 
-    // Q10: Action taken with medicine
+    /**
+     * Q10: Action Taken with Medicine (Adverse Path) - DECHALLENGE DATA
+     * 
+     * Dechallenge = What happens when drug is stopped
+     * This is crucial for causality assessment:
+     * - If problem resolves when drug stopped → Strong causality
+     * - If problem persists when drug stopped → Weaker causality
+     */
     actionTaken: {
         id: 'actionTaken',
         question: "What did you do with the medicine after the problem?",
@@ -199,7 +329,15 @@ const QUESTIONS = {
         conditional: (responses) => responses.overallStatus?.selected === 'had_problem'
     },
 
-    // Q11: Outcome after action
+    /**
+     * Q11: Outcome After Action (Adverse Path) - DECHALLENGE RESULT
+     * 
+     * Completes the dechallenge assessment:
+     * - resolved: Positive dechallenge → Strong causality
+     * - improved: Partial positive dechallenge → Moderate causality
+     * - no_change: Negative dechallenge → Weaker causality (or irreversible event)
+     * - worsened: Requires immediate attention
+     */
     outcomeAfterAction: {
         id: 'outcomeAfterAction',
         question: "What happened after taking this action?",
@@ -216,9 +354,19 @@ const QUESTIONS = {
         conditional: (responses) => responses.overallStatus?.selected === 'had_problem'
     },
 
-    // ===== PHASE 3: COMMON QUESTIONS FOR ALL =====
+    // ===================================================================
+    // PHASE 3: COMMON QUESTIONS FOR ALL PATHS
+    // These questions are asked regardless of path taken
+    // ===================================================================
 
-    // Q12: Other medications
+    /**
+     * Q12: Other Medications - CONCOMITANT DRUG DATA
+     * 
+     * Essential for causality assessment:
+     * - Drug-drug interactions may explain events
+     * - Confounding factors need documentation
+     * - Required for complete ICSR submission
+     */
     otherMedications: {
         id: 'otherMedications',
         question: "Were you taking any other medicines during this time?",
@@ -234,7 +382,15 @@ const QUESTIONS = {
         category: 'concomitant'
     },
 
-    // Q13: Need follow-up?
+    /**
+     * Q13: Follow-Up Needs - PATIENT ENGAGEMENT
+     * 
+     * Determines next steps and closes the loop:
+     * - all_good: Case can be closed
+     * - questions: May need additional communication
+     * - callback: Requires proactive outreach
+     * - appointment: Needs scheduling action
+     */
     needsFollowUp: {
         id: 'needsFollowUp',
         question: "Would you like any further assistance?",
@@ -251,71 +407,94 @@ const QUESTIONS = {
     },
 };
 
-// Dynamic question order based on responses
+// ============================================================================
+// DYNAMIC QUESTION ORDER - SMART BRANCHING LOGIC
+// ============================================================================
+/**
+ * Determines which questions to show based on patient's first response
+ * 
+ * THREE PATHS:
+ * 1. POSITIVE (fully_recovered/improving): 6 questions - recovery data
+ * 2. ADVERSE (had_problem): 11 questions - full safety report
+ * 3. NEUTRAL (same): 4 questions - basic follow-up
+ * 
+ * @param {object} responses - Current response state
+ * @returns {string[]} Array of question IDs in order
+ */
 const getQuestionOrder = (responses) => {
+    // Base questions asked of everyone
     const baseQuestions = ['overallStatus', 'medicationAdherence'];
     
     const status = responses.overallStatus?.selected;
     
     if (status === 'fully_recovered' || status === 'improving') {
+        // ===== POSITIVE PATH =====
         // Happy path - patient is doing well
+        // Captures recovery data and treatment efficacy
         return [
             ...baseQuestions,
-            'symptomImprovement',
-            'improvementTimeline',
-            'otherMedications',
-            'needsFollowUp'
+            'symptomImprovement',   // How much better?
+            'improvementTimeline',  // How quickly?
+            'otherMedications',     // Other drugs?
+            'needsFollowUp'         // Need anything else?
         ];
     } else if (status === 'had_problem') {
+        // ===== ADVERSE EVENT PATH =====
         // Problem path - need detailed adverse event info
+        // Full ICSR-compliant data collection
         return [
             ...baseQuestions,
-            'problemType',
-            'timeToOnset',
-            'symptoms',
-            'severity',
-            'medicalAttention',
-            'actionTaken',
-            'outcomeAfterAction',
-            'otherMedications',
-            'needsFollowUp'
+            'problemType',          // What kind of problem?
+            'timeToOnset',          // When did it start?
+            'symptoms',             // What symptoms?
+            'severity',             // How bad?
+            'medicalAttention',     // Need medical help?
+            'actionTaken',          // What did you do?
+            'outcomeAfterAction',   // What happened?
+            'otherMedications',     // Other drugs?
+            'needsFollowUp'         // Need anything else?
         ];
     } else if (status === 'same') {
-        // No change path
+        // ===== NEUTRAL PATH =====
+        // No change path - minimal questions
         return [
             ...baseQuestions,
-            'otherMedications',
-            'needsFollowUp'
+            'otherMedications',     // Other drugs?
+            'needsFollowUp'         // Need anything else?
         ];
     }
     
-    // Default - just ask first two questions
+    // Default - just ask first two questions until status determined
     return baseQuestions;
 };
 
-// ============================================
-// STYLES
-// ============================================
+// ============================================================================
+// STYLES - Modern Card-Based Mobile-First Design
+// ============================================================================
 const styles = {
+    // Container with padding for mobile
     container: {
         maxWidth: '600px',
         margin: '0 auto',
         padding: '1rem',
-        paddingBottom: '100px',
+        paddingBottom: '100px',  // Space for fixed bottom elements
     },
+    // Centered header section
     header: {
         textAlign: 'center',
         marginBottom: '1.5rem',
         paddingTop: '1rem',
     },
+    // Main question card - elevated with animation
     questionCard: {
         background: '#fff',
         borderRadius: '20px',
         padding: '1.5rem',
         boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
         marginBottom: '1rem',
-        animation: 'slideIn 0.4s ease',
+        animation: 'slideIn 0.4s ease',  // Smooth entrance animation
     },
+    // Progress bar showing completion
     progressBar: {
         display: 'flex',
         gap: '4px',
@@ -328,6 +507,7 @@ const styles = {
         flex: 1,
         transition: 'all 0.3s ease',
     },
+    // Question number indicator
     questionNumber: {
         fontSize: '0.8rem',
         color: '#667eea',
@@ -336,6 +516,7 @@ const styles = {
         textTransform: 'uppercase',
         letterSpacing: '0.5px',
     },
+    // Main question text
     questionText: {
         fontSize: '1.3rem',
         fontWeight: '700',
@@ -343,16 +524,19 @@ const styles = {
         color: '#1a1a2e',
         lineHeight: '1.3',
     },
+    // Explanatory subtext
     questionSubtext: {
         fontSize: '0.9rem',
         color: '#888',
         marginBottom: '1.5rem',
     },
+    // Options container
     optionGrid: {
         display: 'flex',
         flexDirection: 'column',
         gap: '0.6rem',
     },
+    // Individual option button
     optionButton: {
         width: '100%',
         padding: '1rem 1.25rem',
@@ -376,6 +560,7 @@ const styles = {
         flex: 1,
         fontWeight: '500',
     },
+    // Checkbox indicator
     optionCheck: {
         width: '24px',
         height: '24px',
@@ -386,6 +571,7 @@ const styles = {
         justifyContent: 'center',
         transition: 'all 0.2s ease',
     },
+    // Text input section for additional details
     textInputSection: {
         marginTop: '1.5rem',
         paddingTop: '1.5rem',
@@ -418,6 +604,7 @@ const styles = {
         alignItems: 'center',
         gap: '0.5rem',
     },
+    // Navigation buttons at bottom
     navigationButtons: {
         display: 'flex',
         gap: '1rem',
@@ -446,6 +633,7 @@ const styles = {
         fontWeight: '600',
         transition: 'all 0.2s ease',
     },
+    // Data extracted info box - shows what data this question captures
     dataExtractedBox: {
         background: 'linear-gradient(135deg, #667eea08 0%, #764ba208 100%)',
         borderRadius: '12px',
@@ -473,6 +661,7 @@ const styles = {
         borderRadius: '20px',
         fontWeight: '500',
     },
+    // Summary screen styles
     summaryCard: {
         background: '#fff',
         borderRadius: '20px',
@@ -494,6 +683,7 @@ const styles = {
         fontWeight: '600',
         color: '#333',
     },
+    // Urgent warning banner for serious cases
     urgentBanner: {
         background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)',
         color: '#fff',
@@ -506,24 +696,49 @@ const styles = {
     },
 };
 
-// ============================================
-// MAIN COMPONENT
-// ============================================
+// ============================================================================
+// MAIN COMPONENT - PatientFollowUp
+// ============================================================================
+/**
+ * PatientFollowUp Component
+ * 
+ * Smart branching questionnaire for collecting patient follow-up data.
+ * This is STEP 5 in the patient journey after OTP verification.
+ * 
+ * STATE MANAGEMENT:
+ * - responses: Tracks all question answers { questionId: { selected, notes } }
+ * - currentQuestionIndex: Which question is being shown
+ * - showSummary: Whether to show review screen before submission
+ * - consent: Patient consent for data sharing (required for submission)
+ */
 function PatientFollowUp() {
-    const { id } = useParams();
+    const { id } = useParams();  // Follow-up ID from URL
     const navigate = useNavigate();
+    
+    // ========== STATE ==========
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
-    const [prescription, setPrescription] = useState(null);
-    const [prescriptionId, setPrescriptionId] = useState(null);
+    const [prescription, setPrescription] = useState(null);      // Prescription context
+    const [prescriptionId, setPrescriptionId] = useState(null);  // For linking back
     
-    // Responses state: { questionId: { selected: value|array, notes: string } }
+    /**
+     * Responses state structure:
+     * {
+     *   overallStatus: { selected: 'fully_recovered', notes: 'Feeling much better' },
+     *   medicationAdherence: { selected: 'completed', notes: '' },
+     *   ...
+     * }
+     */
     const [responses, setResponses] = useState({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [consent, setConsent] = useState(false);
-    const [showSummary, setShowSummary] = useState(false);
+    const [consent, setConsent] = useState(false);       // Required for submission
+    const [showSummary, setShowSummary] = useState(false);  // Review screen
 
+    /**
+     * Load prescription context and any saved drafts
+     * Runs on component mount
+     */
     useEffect(() => { loadDrafts(); }, [id]);
 
     const loadDrafts = async () => {
@@ -538,11 +753,21 @@ function PatientFollowUp() {
         }
     };
 
-    // Get active questions based on responses (dynamic branching)
+    /**
+     * Get active questions based on current responses
+     * Uses useCallback to memoize and avoid unnecessary recalculations
+     * 
+     * This is where the SMART BRANCHING happens:
+     * - Calls getQuestionOrder() to get path-specific questions
+     * - Filters out questions whose conditional returns false
+     * 
+     * @returns {string[]} Array of question IDs to show
+     */
     const getActiveQuestions = useCallback(() => {
         return getQuestionOrder(responses).filter(qId => {
             const q = QUESTIONS[qId];
             if (!q) return false;
+            // If question has a conditional, evaluate it
             if (q.conditional) {
                 return q.conditional(responses);
             }
@@ -550,12 +775,18 @@ function PatientFollowUp() {
         });
     }, [responses]);
 
+    // Derived state - recalculates when responses change
     const activeQuestions = getActiveQuestions();
     const currentQuestionId = activeQuestions[currentQuestionIndex];
     const currentQuestion = currentQuestionId ? QUESTIONS[currentQuestionId] : null;
     const totalQuestions = activeQuestions.length;
 
-    // Handle option selection
+    /**
+     * Handle option selection
+     * Supports both single-select and multi-select questions
+     * 
+     * @param {string} value - The selected option value
+     */
     const handleOptionSelect = (value) => {
         const q = currentQuestion;
         
@@ -564,8 +795,8 @@ function PatientFollowUp() {
             setResponses(prev => {
                 const current = prev[q.id]?.selected || [];
                 const updated = current.includes(value) 
-                    ? current.filter(v => v !== value)
-                    : [...current, value];
+                    ? current.filter(v => v !== value)  // Remove if already selected
+                    : [...current, value];               // Add if not selected
                 return {
                     ...prev,
                     [q.id]: { ...prev[q.id], selected: updated }
@@ -580,7 +811,10 @@ function PatientFollowUp() {
         }
     };
 
-    // Handle notes input
+    /**
+     * Handle notes/text input change
+     * Stores optional free-text notes for each question
+     */
     const handleNotesChange = (value) => {
         setResponses(prev => ({
             ...prev,
@@ -588,30 +822,42 @@ function PatientFollowUp() {
         }));
     };
 
-    // Check if current question has a valid response
+    /**
+     * Check if current question has a valid response
+     * Used to enable/disable the Next button
+     */
     const hasValidResponse = () => {
         if (!currentQuestion) return false;
         const response = responses[currentQuestion.id];
         if (!response) return false;
         
         if (currentQuestion.multiSelect) {
+            // Multi-select needs at least one selection
             return response.selected && response.selected.length > 0;
         }
+        // Single-select needs any selection
         return response.selected !== undefined && response.selected !== null;
     };
 
-    // Navigate to next question
+    /**
+     * Navigate to next question
+     * If at last question, show summary screen
+     */
     const handleNext = () => {
         if (currentQuestionIndex < totalQuestions - 1) {
             setCurrentQuestionIndex(prev => prev + 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
+            // Last question - show summary for review
             setShowSummary(true);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
-    // Navigate to previous question
+    /**
+     * Navigate to previous question
+     * If on summary screen, go back to last question
+     */
     const handleBack = () => {
         if (showSummary) {
             setShowSummary(false);
@@ -621,24 +867,43 @@ function PatientFollowUp() {
         }
     };
 
-    // Get readable answer for summary
+    /**
+     * Get human-readable answer for summary display
+     * Converts option values to their labels
+     * 
+     * @param {string} questionId - Question to get answer for
+     * @returns {string} Human-readable answer
+     */
     const getReadableAnswer = (questionId) => {
         const q = QUESTIONS[questionId];
         const response = responses[questionId];
         if (!response || !response.selected) return 'Not answered';
         
         if (q.multiSelect) {
+            // Join multiple selections with commas
             return response.selected.map(v => {
                 const opt = q.options.find(o => o.value === v);
                 return opt ? opt.label : v;
             }).join(', ');
         }
         
+        // Single selection - find the label
         const opt = q.options.find(o => o.value === response.selected);
         return opt ? opt.label : response.selected;
     };
 
-    // Check for urgent conditions
+    /**
+     * Check if this is an URGENT case requiring immediate attention
+     * 
+     * URGENT CRITERIA (per regulatory requirements):
+     * - Hospital admission required
+     * - Emergency room visit
+     * - Severe symptoms
+     * - Breathing difficulty (anaphylaxis risk)
+     * - Swelling of face/lips/throat (anaphylaxis risk)
+     * 
+     * @returns {boolean} True if case is urgent
+     */
     const isUrgentCase = () => {
         const status = responses.overallStatus?.selected;
         const medicalAttention = responses.medicalAttention?.selected;
@@ -651,11 +916,16 @@ function PatientFollowUp() {
         return medicalAttention === 'hospital' || 
                medicalAttention === 'emergency' ||
                severity === 'severe' ||
-               symptoms.includes('breathing') ||
-               symptoms.includes('swelling');
+               symptoms.includes('breathing') ||  // Potential anaphylaxis
+               symptoms.includes('swelling');     // Potential anaphylaxis
     };
 
-    // Get path type for summary display
+    /**
+     * Determine which path the patient took
+     * Used for displaying appropriate summary and data fields
+     * 
+     * @returns {'positive'|'adverse'|'neutral'} Path type
+     */
     const getPathType = () => {
         const status = responses.overallStatus?.selected;
         if (status === 'fully_recovered' || status === 'improving') return 'positive';
@@ -663,8 +933,20 @@ function PatientFollowUp() {
         return 'neutral';
     };
 
-    // Submit the form
+    /**
+     * Submit the completed form to backend (STEP 6)
+     * 
+     * FLOW:
+     * 1. Validate consent checkbox
+     * 2. Build comprehensive safety data object
+     * 3. Submit via API
+     * 4. Navigate to success page
+     * 
+     * DATA STRUCTURE:
+     * Builds a flat object with all collected fields for regulatory reporting
+     */
     const handleSubmit = async () => {
+        // ⚠️ CRITICAL: Consent is legally required
         if (!consent) {
             alert('Please confirm your consent to share this information.');
             return;
@@ -674,49 +956,57 @@ function PatientFollowUp() {
         try {
             const pathType = getPathType();
             
-            // Build comprehensive response object - structure varies by path
+            /**
+             * Build comprehensive response object
+             * Structure varies by path but includes all fields
+             * AI service will use these to generate draft statements
+             */
             const safetyData = {
-                // Core status (always present)
+                // ===== CORE STATUS (always present) =====
                 overallStatus: responses.overallStatus?.selected || '',
                 medicationAdherence: responses.medicationAdherence?.selected || '',
                 pathType: pathType,
                 
-                // Positive path fields
+                // ===== POSITIVE PATH FIELDS =====
                 symptomImprovement: responses.symptomImprovement?.selected || '',
                 improvementTimeline: responses.improvementTimeline?.selected || '',
                 
-                // Adverse event fields (only if had_problem)
+                // ===== ADVERSE EVENT FIELDS (only populated if had_problem) =====
                 problemType: responses.problemType?.selected || '',
                 timeToOnset: responses.timeToOnset?.selected || '',
-                symptoms: (responses.symptoms?.selected || []).join(', '),
+                symptoms: (responses.symptoms?.selected || []).join(', '),  // Comma-separated
                 severity: responses.severity?.selected || '',
                 medicalAttention: responses.medicalAttention?.selected || '',
                 actionTaken: responses.actionTaken?.selected || '',
                 outcomeAfterAction: responses.outcomeAfterAction?.selected || '',
                 
-                // Common fields
+                // ===== COMMON FIELDS =====
                 concomitantMedications: responses.otherMedications?.selected || '',
                 followUpNeeded: responses.needsFollowUp?.selected || '',
                 
-                // Notes combined
+                // ===== COMBINED NOTES =====
+                // Join all free-text notes with question context
                 patientNotes: Object.entries(responses)
                     .filter(([key, r]) => r.notes && r.notes.trim())
                     .map(([qId, r]) => `${QUESTIONS[qId]?.question}: ${r.notes}`)
                     .join(' | ') || 'No additional notes',
                 
-                // Derived fields
+                // ===== DERIVED FLAGS (for prioritization) =====
                 isSerious: responses.medicalAttention?.selected === 'hospital' || 
                           responses.medicalAttention?.selected === 'emergency',
                 needsUrgentAttention: isUrgentCase(),
                 isPositiveOutcome: pathType === 'positive',
                 
-                // Summary
+                // ===== FULL SUMMARY TEXT =====
                 summaryText: activeQuestions.map(qId => 
                     `${QUESTIONS[qId].question}: ${getReadableAnswer(qId)}`
                 ).join(' | ')
             };
             
+            // Submit to backend - AI will process and generate drafts
             await submitFollowUp(id, safetyData, true);
+            
+            // Navigate to success page (STEP 6)
             navigate(`/follow-up/${id}/success`);
         } catch (err) {
             setError(err.message);
@@ -725,7 +1015,10 @@ function PatientFollowUp() {
         }
     };
 
+    // ========== LOADING STATE ==========
     if (loading) return <Loading message="Loading your follow-up..." />;
+    
+    // ========== ERROR STATE ==========
     if (error) return (
         <div className="page">
             <div style={styles.container}>
@@ -734,8 +1027,10 @@ function PatientFollowUp() {
         </div>
     );
 
+    // ========== MAIN RENDER ==========
     return (
         <div className="page" style={{ background: 'linear-gradient(180deg, #f8f9fc 0%, #eef1f8 100%)', minHeight: '100vh' }}>
+            {/* Inline CSS for animations and hover states */}
             <style>
                 {`
                     @keyframes slideIn {
@@ -763,11 +1058,12 @@ function PatientFollowUp() {
             </style>
             
             <div style={styles.container}>
-                {/* Header */}
+                {/* ========== HEADER ========== */}
                 <div style={styles.header}>
                     <h1 style={{ fontSize: '1.4rem', marginBottom: '0.25rem', color: '#1a1a2e' }}>
                         Safety Follow-Up
                     </h1>
+                    {/* Show prescription context */}
                     {prescription && (
                         <p style={{ color: '#666', fontSize: '0.9rem', margin: 0 }}>
                             {prescription.medicineName || prescription.condition}
@@ -775,13 +1071,15 @@ function PatientFollowUp() {
                     )}
                 </div>
 
-                {/* Progress Bar */}
+                {/* ========== PROGRESS BAR ========== */}
+                {/* Visual indicator of question progress */}
                 <div style={styles.progressBar}>
                     {activeQuestions.map((_, i) => (
                         <div
                             key={i}
                             style={{
                                 ...styles.progressSegment,
+                                // Gradient for completed, solid for current, gray for future
                                 background: i < currentQuestionIndex 
                                     ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                                     : i === currentQuestionIndex && !showSummary
@@ -792,7 +1090,8 @@ function PatientFollowUp() {
                     ))}
                 </div>
 
-                {/* Urgent Warning Banner */}
+                {/* ========== URGENT WARNING BANNER ========== */}
+                {/* Shows if patient has serious symptoms */}
                 {isUrgentCase() && !showSummary && (
                     <div style={styles.urgentBanner}>
                         <span style={{ fontSize: '1.5rem' }}>⚠️</span>
@@ -807,25 +1106,31 @@ function PatientFollowUp() {
                     </div>
                 )}
 
-                {/* Current Question */}
+                {/* ========== QUESTION CARD ========== */}
+                {/* Main question display - shown when not on summary screen */}
                 {!showSummary && currentQuestion && (
                     <div style={styles.questionCard}>
+                        {/* Question number indicator */}
                         <div style={styles.questionNumber}>
                             Question {currentQuestionIndex + 1} of {totalQuestions}
                         </div>
                         
+                        {/* Main question text */}
                         <h2 style={styles.questionText}>
                             {currentQuestion.question}
                         </h2>
                         
+                        {/* Helper subtext */}
                         <p style={styles.questionSubtext}>
                             {currentQuestion.subtext}
                         </p>
 
-                        {/* Options */}
+                        {/* ========== OPTIONS ========== */}
+                        {/* Render selectable options */}
                         <div style={styles.optionGrid}>
                             {currentQuestion.options.map((option) => {
                                 const response = responses[currentQuestion.id];
+                                // Check if this option is selected
                                 const isSelected = currentQuestion.multiSelect
                                     ? (response?.selected || []).includes(option.value)
                                     : response?.selected === option.value;
@@ -837,6 +1142,7 @@ function PatientFollowUp() {
                                         className="option-btn"
                                         style={{
                                             ...styles.optionButton,
+                                            // Highlight selected options
                                             borderColor: isSelected ? '#667eea' : '#e8e8e8',
                                             background: isSelected 
                                                 ? 'linear-gradient(135deg, #667eea08 0%, #764ba208 100%)' 
@@ -846,6 +1152,7 @@ function PatientFollowUp() {
                                     >
                                         <span style={styles.optionIcon}>{option.icon}</span>
                                         <span style={styles.optionLabel}>{option.label}</span>
+                                        {/* Checkmark indicator */}
                                         <span style={{
                                             ...styles.optionCheck,
                                             background: isSelected ? '#667eea' : 'transparent',
@@ -862,7 +1169,8 @@ function PatientFollowUp() {
                             })}
                         </div>
 
-                        {/* Text Input for Additional Details */}
+                        {/* ========== OPTIONAL TEXT INPUT ========== */}
+                        {/* Free-text area for additional details */}
                         <div style={styles.textInputSection}>
                             <label style={styles.textInputLabel}>
                                 💬 {currentQuestion.textPrompt}
@@ -880,7 +1188,8 @@ function PatientFollowUp() {
                             </div>
                         </div>
 
-                        {/* Data Extracted Info */}
+                        {/* ========== DATA EXTRACTED INFO ========== */}
+                        {/* Shows patient what data this question captures */}
                         <div style={styles.dataExtractedBox}>
                             <div style={styles.dataExtractedTitle}>
                                 📊 This question captures:
@@ -892,8 +1201,9 @@ function PatientFollowUp() {
                             </div>
                         </div>
 
-                        {/* Navigation */}
+                        {/* ========== NAVIGATION BUTTONS ========== */}
                         <div style={styles.navigationButtons}>
+                            {/* Back button - only show if not on first question */}
                             {currentQuestionIndex > 0 && (
                                 <button
                                     type="button"
@@ -903,6 +1213,7 @@ function PatientFollowUp() {
                                     ← Back
                                 </button>
                             )}
+                            {/* Next/Review button */}
                             <button
                                 type="button"
                                 className="next-btn"
@@ -919,10 +1230,12 @@ function PatientFollowUp() {
                     </div>
                 )}
 
-                {/* Summary Screen */}
+                {/* ========== SUMMARY SCREEN ========== */}
+                {/* Shows all answers for review before submission */}
                 {showSummary && (
                     <div style={{ animation: 'slideIn 0.4s ease' }}>
-                        {/* Path-specific Banner */}
+                        {/* ---------- Path-Specific Success Banner ---------- */}
+                        {/* Green banner for positive outcomes */}
                         {getPathType() === 'positive' && (
                             <div style={{
                                 ...styles.urgentBanner,
@@ -940,6 +1253,7 @@ function PatientFollowUp() {
                             </div>
                         )}
                         
+                        {/* Red banner for urgent/serious cases */}
                         {isUrgentCase() && (
                             <div style={styles.urgentBanner}>
                                 <span style={{ fontSize: '1.5rem' }}>🏥</span>
@@ -954,23 +1268,28 @@ function PatientFollowUp() {
                             </div>
                         )}
 
+                        {/* ---------- Answers Review Card ---------- */}
                         <div style={styles.summaryCard}>
                             <h2 style={{ marginBottom: '1rem', fontSize: '1.3rem', color: '#1a1a2e' }}>
                                 ✓ Review Your Responses
                             </h2>
                             
+                            {/* List all answered questions */}
                             {activeQuestions.map((qId, index) => {
                                 const q = QUESTIONS[qId];
                                 const response = responses[qId];
                                 
                                 return (
                                     <div key={qId} style={styles.summaryItem}>
+                                        {/* Question text */}
                                         <div style={styles.summaryQuestion}>
                                             {index + 1}. {q.question}
                                         </div>
+                                        {/* Selected answer */}
                                         <div style={styles.summaryAnswer}>
                                             {getReadableAnswer(qId)}
                                         </div>
+                                        {/* Optional notes */}
                                         {response?.notes && (
                                             <div style={{ 
                                                 fontSize: '0.85rem', 
@@ -988,6 +1307,7 @@ function PatientFollowUp() {
                                 );
                             })}
 
+                            {/* Edit button - go back to change answers */}
                             <button
                                 type="button"
                                 onClick={handleBack}
@@ -1000,8 +1320,10 @@ function PatientFollowUp() {
                             </button>
                         </div>
 
-                        {/* Consent & Submit */}
+                        {/* ---------- Consent & Submit Card ---------- */}
+                        {/* ⚠️ CRITICAL: Consent is legally required for data sharing */}
                         <div style={styles.summaryCard}>
+                            {/* Consent checkbox */}
                             <label style={{ 
                                 display: 'flex', 
                                 alignItems: 'flex-start', 
@@ -1026,6 +1348,7 @@ function PatientFollowUp() {
                                 </span>
                             </label>
 
+                            {/* Submit button */}
                             <button
                                 type="button"
                                 className="next-btn"
@@ -1043,9 +1366,11 @@ function PatientFollowUp() {
                             </button>
                         </div>
 
-                        {/* Data Summary */}
+                        {/* ---------- Data Summary Card ---------- */}
+                        {/* Shows what data was captured based on path taken */}
                         <div style={{
                             ...styles.summaryCard,
+                            // Different background color for positive vs adverse path
                             background: getPathType() === 'positive' 
                                 ? 'linear-gradient(135deg, #00b89408 0%, #00a88408 100%)'
                                 : 'linear-gradient(135deg, #667eea08 0%, #764ba208 100%)',
@@ -1060,6 +1385,8 @@ function PatientFollowUp() {
                             }}>
                                 📊 {getPathType() === 'positive' ? 'Recovery Data Captured' : 'Safety Data Captured'}
                             </div>
+                            
+                            {/* Path-specific data field tags */}
                             <div style={{ 
                                 display: 'flex', 
                                 flexWrap: 'wrap', 
@@ -1067,22 +1394,25 @@ function PatientFollowUp() {
                                 fontSize: '0.8rem'
                             }}>
                                 {getPathType() === 'positive' ? (
-                                    // Positive outcome data fields
+                                    // ===== POSITIVE PATH DATA FIELDS =====
                                     ['Overall status', 'Medication adherence', 'Symptom improvement', 'Recovery timeline', 'Other medications', 'Follow-up needs'].map((field, i) => (
                                         <span key={i} style={{...styles.dataTag, background: '#00b89415', color: '#00b894'}}>✓ {field}</span>
                                     ))
                                 ) : getPathType() === 'adverse' ? (
-                                    // Adverse event data fields
+                                    // ===== ADVERSE PATH DATA FIELDS =====
+                                    // These match regulatory ICSR requirements
                                     ['Time-to-onset', 'Event description', 'Severity', 'Seriousness', 'Action taken', 'Outcome', 'Concomitant drugs'].map((field, i) => (
                                         <span key={i} style={styles.dataTag}>✓ {field}</span>
                                     ))
                                 ) : (
-                                    // Neutral path
+                                    // ===== NEUTRAL PATH DATA FIELDS =====
                                     ['Overall status', 'Medication adherence', 'Other medications', 'Follow-up needs'].map((field, i) => (
                                         <span key={i} style={styles.dataTag}>✓ {field}</span>
                                     ))
                                 )}
                             </div>
+                            
+                            {/* Path-specific explanation text */}
                             <p style={{ 
                                 fontSize: '0.85rem', 
                                 color: '#666', 
@@ -1099,7 +1429,8 @@ function PatientFollowUp() {
                     </div>
                 )}
 
-                {/* Prescription Reference */}
+                {/* ========== PRESCRIPTION REFERENCE ========== */}
+                {/* Collapsible section showing original prescription details */}
                 {prescription && !showSummary && (
                     <details style={{ marginTop: '1rem' }}>
                         <summary style={{ 
@@ -1118,6 +1449,7 @@ function PatientFollowUp() {
                             fontSize: '0.9rem',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                         }}>
+                            {/* Handle multi-medicine prescriptions */}
                             {prescription.medicines && prescription.medicines.length > 0 ? (
                                 prescription.medicines.map((med, i) => (
                                     <p key={i}><strong>{med.name}:</strong> {med.dosageInstructions || med.dosage}</p>
@@ -1132,6 +1464,7 @@ function PatientFollowUp() {
                             {prescription.condition && (
                                 <p><strong>Condition:</strong> {prescription.condition}</p>
                             )}
+                            {/* Link to view full prescription */}
                             {prescriptionId && (
                                 <Link 
                                     to={`/prescription/${prescriptionId}`}
@@ -1144,6 +1477,7 @@ function PatientFollowUp() {
                     </details>
                 )}
 
+                {/* Medical disclaimer */}
                 <Disclaimer variant="minimal" />
             </div>
         </div>

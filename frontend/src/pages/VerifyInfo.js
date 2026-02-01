@@ -1,12 +1,44 @@
 /**
- * Patient Verify Info Page
- * Info page for patients before OTP verification
+ * ============================================================================
+ * VerifyInfo.js - Patient Verification Information Page
+ * ============================================================================
+ * 
+ * PURPOSE:
+ * Information page for patients who need to access their follow-up form.
+ * Explains the verification process and allows manual entry of follow-up ID.
+ * 
+ * WHEN USED:
+ * - Patient navigates to site directly (not from link)
+ * - Patient lost or doesn't have the direct link
+ * - Patient wants to understand the process first
+ * 
+ * FEATURES:
+ * - Step-by-step explanation of verification process
+ * - Manual follow-up ID input
+ * - Links to OTP verification page
+ * 
+ * USER FLOW:
+ * 1. Patient reads how verification works
+ * 2. Patient enters follow-up ID (from doctor's email)
+ * 3. Clicks "Continue" → redirects to /verify/:id
+ * 4. Then enters OTP on that page
+ * 
+ * NOTE:
+ * Most patients will use the direct link from SMS/WhatsApp/Email
+ * and skip this page entirely.
+ * 
+ * ============================================================================
  */
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Disclaimer from '../components/Disclaimer';
 
+/**
+ * VerifyInfo Component
+ * 
+ * Static information page with ID input
+ */
 function VerifyInfo() {
     const navigate = useNavigate();
 
@@ -16,12 +48,16 @@ function VerifyInfo() {
                 <Disclaimer />
 
                 <div className="card text-center animate-slide-up">
+                    {/* Header */}
                     <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🔐</div>
                     <h1 className="mb-2">Verify Your Follow-Up</h1>
                     <p className="text-muted mb-4">
-                        To access your follow-up form, you need the verification link and OTP sent to your email by your doctor.
+                        To access your follow-up form, you need the verification link and OTP 
+                        sent to your email by your doctor.
                     </p>
 
+                    {/* ========== HOW IT WORKS ========== */}
+                    {/* Step-by-step explanation of the process */}
                     <div className="alert alert-info text-left">
                         <span className="alert-icon">ℹ️</span>
                         <div>
@@ -35,6 +71,8 @@ function VerifyInfo() {
                         </div>
                     </div>
 
+                    {/* ========== MANUAL ID INPUT ========== */}
+                    {/* For patients who have ID but not the full link */}
                     <div className="form-group mt-4">
                         <label className="form-label">Have a Follow-Up ID?</label>
                         <input
@@ -45,12 +83,17 @@ function VerifyInfo() {
                         />
                     </div>
 
+                    {/* Submit button - navigates to OTP verification page */}
                     <button
                         className="btn btn-primary btn-block"
                         onClick={() => {
                             const id = document.getElementById('followUpIdInput').value;
-                            if (id) navigate(`/verify/${id}`);
-                            else alert('Please enter a follow-up ID');
+                            if (id) {
+                                // Redirect to OTP verification with the entered ID
+                                navigate(`/verify/${id}`);
+                            } else {
+                                alert('Please enter a follow-up ID');
+                            }
                         }}
                     >
                         Continue to Verification
@@ -60,5 +103,9 @@ function VerifyInfo() {
         </div>
     );
 }
+
+// ============================================================================
+// EXPORT
+// ============================================================================
 
 export default VerifyInfo;

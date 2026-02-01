@@ -1,32 +1,121 @@
 /**
- * AI Service
- * Handles all AI-related operations with strict safety constraints
+ * ============================================================================
+ * AI Service - Groq LLM Integration with STRICT Safety Constraints
+ * ============================================================================
  * 
- * CRITICAL: AI is used ONLY to reduce effort, NEVER to decide truth
- * CRITICAL: All AI outputs are drafts/suggestions, not facts
+ * PURPOSE:
+ * Handles all AI-related operations for the NEST 2O system.
+ * Uses Groq API with LLaMA 3.3 70B model for natural language processing.
+ * 
+ * ⚠️ CRITICAL SAFETY PHILOSOPHY:
+ * AI is used ONLY to reduce effort, NEVER to decide medical truth.
+ * All AI outputs are DRAFTS and SUGGESTIONS, never treated as facts.
+ * The PATIENT is always the final authority on their own experience.
+ * 
+ * WHAT AI DOES:
+ * 1. Generates personalized follow-up questions based on prescription
+ * 2. Creates draft statements for patient verification
+ * 3. Formats doctor summaries (reorganization only, no interpretation)
+ * 
+ * WHAT AI DOES NOT DO:
+ * - Make medical diagnoses or recommendations
+ * - Interpret patient symptoms
+ * - Provide medical advice
+ * - Override patient-provided information
+ * 
+ * SECURITY:
+ * - OTP verification REQUIRED before any AI operation
+ * - Patient consent REQUIRED before generating doctor summaries
+ * - All prompts include safety prefix to prevent misuse
+ * 
+ * @author NEST 2O Team
  */
 
+// ============================================================================
+// DEPENDENCIES
+// ============================================================================
+
+/**
+ * Groq client and safety prefix from configuration
+ * SAFETY_PREFIX is prepended to all prompts to enforce constraints
+ */
 const { groq, SAFETY_PREFIX } = require('../config/groq');
+
+/**
+ * OTP verification service - ensures patient identity is verified
+ * AI operations are BLOCKED without valid OTP verification
+ */
 const { isOTPVerified } = require('./otpService');
+
+/**
+ * Firebase Firestore database for storing/retrieving data
+ */
 const { db } = require('../config/firebase');
+
+// ============================================================================
+// PERSONALIZED QUESTIONS GENERATION
+// ============================================================================
 
 /**
  * Generate personalized follow-up questions based on prescription
  * 
- * @param {object} prescription - Prescription data
+ * PURPOSE:
+ * Creates clinically relevant questions tailored to the patient's
+ * specific condition, medications, and treatment plan.
+ * 
+ * WHY PERSONALIZED QUESTIONS?
+ * Generic questions like "How are you feeling?" don't help doctors.
+ * Specific questions like "What is your current blood pressure?" give
+ * actionable clinical data that helps identify treatment issues.
+ * 
+ * QUESTION CATEGORIES:
+ * 1. Primary Symptom Assessment - Measurable condition indicators
+ * 2. Red Flag Symptoms - Warning signs needing immediate attention
+ * 3. Functional Impact - How condition affects daily life
+ * 4. Medication Response - Expected/unexpected drug effects
+ * 5. Recovery Indicators - Signs of improvement
+ * 
+ * @param {object} prescription - Prescription data from Firestore
+ * @param {string} prescription.condition - Patient's diagnosed condition
+ * @param {Array} prescription.medicines - Array of prescribed medications
+ * @param {string} prescription.duration - Treatment duration
+ * @param {string} prescription.patientAge - Patient's age
+ * @param {string} prescription.notes - Doctor's notes
  * @returns {Promise<{success: boolean, questions?: array, error?: string}>}
+ * 
+ * @example
+ * const result = await generatePersonalizedQuestions({
+ *     condition: 'Hypertension',
+ *     medicines: [{ name: 'Amlodipine', dosage: '5mg daily' }],
+ *     duration: '30 days'
+ * });
  */
 async function generatePersonalizedQuestions(prescription) {
     // Build medication list string from medicines array
+    // Handles both array format and legacy single-medicine format
     let medicationDetails = '';
     if (prescription.medicines && Array.isArray(prescription.medicines)) {
+        // New format: array of medicine objects
         medicationDetails = prescription.medicines.map((m, i) => 
             `${i + 1}. ${m.name} - ${m.dosageInstructions || m.dosage || 'As directed'}`
         ).join('\n');
     } else if (prescription.medicineName) {
+        // Legacy format: single medicine fields
         medicationDetails = `${prescription.medicineName} - ${prescription.dosage || 'As directed'}`;
     }
 
+    /**
+     * AI Prompt for Question Generation
+     * 
+     * STRUCTURE:
+     * 1. SAFETY_PREFIX - Non-negotiable safety constraints
+     * 2. TASK - Clear instruction for what to generate
+     * 3. PRESCRIPTION DETAILS - Context for personalization
+     * 4. REQUIREMENTS - Quality constraints for output
+     * 5. QUESTION CATEGORIES - What types of questions to generate
+     * 6. EXAMPLES - Good question examples for guidance
+     * 7. OUTPUT FORMAT - JSON structure for parsing
+     */
     const prompt = `${SAFETY_PREFIX}
 
 TASK: Generate EXACTLY 5-6 highly specific, clinically actionable follow-up questions for a patient.
@@ -84,6 +173,9 @@ OUTPUT FORMAT (JSON only, no markdown):
 REMEMBER: Each question should give the doctor actionable clinical information, not just patient satisfaction data.`;
 
     try {
+        // Call Groq API with the prompt
+        // Temperature 0.3 = More deterministic, consistent outputs
+        // max_tokens 2000 = Enough for 6-7 detailed questions
         const completion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: prompt }],
             model: 'llama-3.3-70b-versatile',
@@ -93,7 +185,7 @@ REMEMBER: Each question should give the doctor actionable clinical information, 
 
         const responseText = completion.choices[0]?.message?.content || '';
 
-        // Parse JSON response
+        // Parse JSON from response (AI sometimes adds markdown wrapper)
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
             return { success: false, error: 'Failed to parse AI response' };
@@ -101,31 +193,64 @@ REMEMBER: Each question should give the doctor actionable clinical information, 
 
         const parsed = JSON.parse(jsonMatch[0]);
         
-        // Validate we got the right number of questions
+        // Validate question count (warn but don't fail)
         const questions = parsed.personalizedQuestions || [];
         if (questions.length < 5 || questions.length > 8) {
             console.warn(`AI generated ${questions.length} questions, expected 6-7`);
         }
 
-        return { success: true, questions: questions.slice(0, 7) }; // Cap at 7 questions
+        // Cap at 7 questions to keep form manageable
+        return { success: true, questions: questions.slice(0, 7) };
     } catch (error) {
         console.error('Generate Personalized Questions Error:', error);
         return { success: false, error: 'Failed to generate personalized questions' };
     }
 }
 
+// ============================================================================
+// DRAFT STATEMENT GENERATION (STEP 5)
+// ============================================================================
+
 /**
  * STEP 5: Generate draft statements for patient verification
  * 
- * ONLY called AFTER OTP verification
- * Generates EDITABLE drafts based on prescription metadata
- * These are NOT facts - they are UI defaults for the patient to confirm/edit
+ * PURPOSE:
+ * Creates EDITABLE draft statements based on prescription metadata.
+ * These are UI defaults that the patient will CONFIRM or MODIFY.
+ * They are NOT facts - they are suggestions to reduce patient effort.
+ * 
+ * SECURITY:
+ * - ONLY called AFTER OTP verification (checked first)
+ * - No medical advice or interpretation
+ * - Patient has full edit control
+ * 
+ * DRAFTS GENERATED:
+ * 1. Medication Adherence - Did patient take medicine as prescribed?
+ * 2. Symptom Status - Have symptoms improved/worsened?
+ * 3. Side Effects - Any adverse reactions?
+ * 4. Completion Status - Was full course completed?
+ * 
+ * WHY DRAFTS?
+ * - Reduces typing effort for patients
+ * - Ensures consistent format for doctor review
+ * - Patient can edit 100% of content before submission
  * 
  * @param {string} followUpId - The follow-up document ID
  * @returns {Promise<{success: boolean, drafts?: object, error?: string}>}
+ * 
+ * @example
+ * // Returns drafts like:
+ * {
+ *   medicationAdherence: "I took Amoxicillin 500mg three times daily as prescribed",
+ *   symptomStatus: "My symptoms have improved since starting treatment",
+ *   sideEffects: "I experienced no side effects",
+ *   completionStatus: "I completed the full 7-day course"
+ * }
  */
 async function generateDraftStatements(followUpId) {
-    // SECURITY: Verify OTP before ANY AI call
+    // ========== SECURITY CHECK ==========
+    // CRITICAL: Verify OTP before ANY AI operation
+    // This ensures the patient is who they claim to be
     const verified = await isOTPVerified(followUpId);
     if (!verified) {
         return {
@@ -134,22 +259,32 @@ async function generateDraftStatements(followUpId) {
         };
     }
 
-    // Fetch follow-up and prescription data
+    // ========== FETCH DATA ==========
+    // Get follow-up document to find associated prescription
     const followUpDoc = await db.collection('followUps').doc(followUpId).get();
     if (!followUpDoc.exists) {
         return { success: false, error: 'Follow-up not found' };
     }
 
     const followUpData = followUpDoc.data();
+    
+    // Get prescription data for personalization
     const prescriptionDoc = await db.collection('prescriptions').doc(followUpData.prescriptionId).get();
-
     if (!prescriptionDoc.exists) {
         return { success: false, error: 'Prescription not found' };
     }
 
     const prescription = prescriptionDoc.data();
 
-    // Build the prompt for draft generation
+    // ========== AI PROMPT ==========
+    /**
+     * Prompt Structure:
+     * 1. SAFETY_PREFIX - Enforces safety constraints
+     * 2. TASK - What to generate (drafts, not facts)
+     * 3. PRESCRIPTION METADATA - Context for personalization
+     * 4. DRAFT CATEGORIES - What statements to create
+     * 5. OUTPUT FORMAT - JSON for easy parsing
+     */
     const prompt = `${SAFETY_PREFIX}
 
 TASK: Generate DRAFT statements for a patient follow-up form.
@@ -179,16 +314,19 @@ OUTPUT FORMAT (JSON only, no markdown):
 Remember: These are DRAFTS. The patient is the final authority.`;
 
     try {
+        // Call Groq API
+        // Temperature 0.3 = Consistent, deterministic outputs
+        // max_tokens 500 = Enough for 4 short statements
         const completion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: prompt }],
             model: 'llama-3.3-70b-versatile',
-            temperature: 0.3, // Low temperature for consistency
+            temperature: 0.3,
             max_tokens: 500,
         });
 
         const responseText = completion.choices[0]?.message?.content || '';
 
-        // Parse JSON response
+        // Parse JSON from response
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
             return { success: false, error: 'Failed to parse AI response' };
@@ -196,7 +334,8 @@ Remember: These are DRAFTS. The patient is the final authority.`;
 
         const drafts = JSON.parse(jsonMatch[0]);
 
-        // Store drafts in the follow-up document
+        // ========== STORE DRAFTS ==========
+        // Save drafts to follow-up document for later retrieval
         await db.collection('followUps').doc(followUpId).update({
             aiDrafts: drafts,
             aiDraftsGeneratedAt: new Date(),
@@ -210,17 +349,38 @@ Remember: These are DRAFTS. The patient is the final authority.`;
     }
 }
 
+// ============================================================================
+// DOCTOR SUMMARY GENERATION (STEP 8)
+// ============================================================================
+
 /**
- * STEP 8: Generate summary for doctor
+ * STEP 8: Generate summary for doctor review
  * 
- * ONLY called AFTER patient consent (explicit submission)
- * Summarizes ONLY verified data - no interpretation, no advice
+ * PURPOSE:
+ * Formats PATIENT-VERIFIED data into a clean summary for the doctor.
+ * This is REFORMATTING only - no interpretation, no advice, no inference.
+ * 
+ * SECURITY:
+ * - ONLY called AFTER patient explicit consent
+ * - Uses ONLY patient-verified data (not AI-generated content)
+ * - No medical recommendations or interpretations
+ * 
+ * WHAT IT DOES:
+ * - Reorganizes patient responses into readable format
+ * - Includes prescription context
+ * - Highlights key information
+ * 
+ * WHAT IT DOES NOT DO:
+ * - Interpret symptoms
+ * - Suggest diagnoses
+ * - Provide medical advice
+ * - Add information beyond what patient provided
  * 
  * @param {string} followUpId - The follow-up document ID
  * @returns {Promise<{success: boolean, summary?: string, error?: string}>}
  */
 async function generateDoctorSummary(followUpId) {
-    // Fetch follow-up data
+    // ========== FETCH DATA ==========
     const followUpDoc = await db.collection('followUps').doc(followUpId).get();
     if (!followUpDoc.exists) {
         return { success: false, error: 'Follow-up not found' };
@@ -228,7 +388,9 @@ async function generateDoctorSummary(followUpId) {
 
     const followUpData = followUpDoc.data();
 
-    // SECURITY: Verify consent before generating summary
+    // ========== SECURITY CHECK ==========
+    // CRITICAL: Verify patient consent before generating summary
+    // Summary contains personal medical information
     if (!followUpData.patientConsent) {
         return {
             success: false,
@@ -236,11 +398,19 @@ async function generateDoctorSummary(followUpId) {
         };
     }
 
-    // Fetch prescription data
+    // Get prescription data for context
     const prescriptionDoc = await db.collection('prescriptions').doc(followUpData.prescriptionId).get();
     const prescription = prescriptionDoc.data();
 
-    // Build the prompt for summary generation
+    // ========== AI PROMPT ==========
+    /**
+     * Prompt for Summary Generation
+     * 
+     * KEY CONSTRAINTS:
+     * - ONLY reformat existing data
+     * - NO interpretation or medical advice
+     * - NO adding information beyond what's provided
+     */
     const prompt = `${SAFETY_PREFIX}
 
 TASK: Format the following PATIENT-VERIFIED follow-up data into a clean summary for the doctor.
@@ -263,20 +433,24 @@ PATIENT-VERIFIED RESPONSES:
 OUTPUT: A clean, formatted summary. Do NOT add medical advice or interpretation.`;
 
     try {
+        // Call Groq API
+        // Temperature 0.2 = Very deterministic (just formatting, no creativity needed)
+        // max_tokens 600 = Enough for comprehensive summary
         const completion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: prompt }],
             model: 'llama-3.3-70b-versatile',
-            temperature: 0.2, // Very low temperature for consistency
+            temperature: 0.2,
             max_tokens: 600,
         });
 
         const summary = completion.choices[0]?.message?.content || '';
 
-        // Store summary in the follow-up document
+        // ========== STORE SUMMARY ==========
+        // Update follow-up with summary and mark as ready for doctor review
         await db.collection('followUps').doc(followUpId).update({
             doctorSummary: summary,
             summaryGeneratedAt: new Date(),
-            status: 'ready_for_review',
+            status: 'ready_for_review',  // Status change triggers doctor notification
         });
 
         return { success: true, summary };
@@ -287,8 +461,12 @@ OUTPUT: A clean, formatted summary. Do NOT add medical advice or interpretation.
     }
 }
 
+// ============================================================================
+// EXPORTS
+// ============================================================================
+
 module.exports = {
-    generateDraftStatements,
-    generateDoctorSummary,
-    generatePersonalizedQuestions,
+    generateDraftStatements,       // Step 5: Create editable drafts for patient
+    generateDoctorSummary,         // Step 8: Format verified data for doctor
+    generatePersonalizedQuestions, // Generate condition-specific questions
 };
