@@ -382,11 +382,15 @@ function NewPrescription({ user }) {
                 dosage: medicines[0]?.dosage || '',
             };
             
+            console.log('📤 Sending prescription data:', prescriptionData);
+            
             // Create prescription in database
             await createPrescription(prescriptionData);
+            console.log('✅ Prescription created successfully');
             // Navigate to list view on success
             navigate('/doctor/prescriptions');
         } catch (err) {
+            console.error('❌ Error creating prescription:', err);
             setError(err.message);
         } finally {
             setLoading(false);

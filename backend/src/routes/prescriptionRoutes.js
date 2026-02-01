@@ -164,6 +164,8 @@ router.post('/scan', async (req, res) => {
  */
 router.post('/', async (req, res) => {
     try {
+        console.log('📝 CREATE PRESCRIPTION - Request received:', req.body);
+        
         const {
             medicineName,
             dosage,
@@ -179,6 +181,7 @@ router.post('/', async (req, res) => {
         // ========== VALIDATION ==========
         // Check all required fields are present
         if (!medicineName || !dosage || !duration || !patientPhone || !doctorId) {
+            console.log('❌ Validation failed - Missing fields');
             return res.status(400).json({
                 success: false,
                 error: 'Missing required fields: medicineName, dosage, duration, patientPhone, doctorId',
@@ -220,6 +223,7 @@ router.post('/', async (req, res) => {
         const prescriptionRef = await db.collection('prescriptions').add(prescriptionData);
 
         // Return created prescription with ID
+        console.log('✅ Prescription created successfully:', prescriptionRef.id);
         res.status(201).json({
             success: true,
             data: {
@@ -230,10 +234,11 @@ router.post('/', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Create Prescription Error:', error);
+        console.error('❌ Create Prescription Error:', error.message);
+        console.error('Full error:', error);
         res.status(500).json({
             success: false,
-            error: 'Failed to create prescription',
+            error: error.message || 'Failed to create prescription',
         });
     }
 });
