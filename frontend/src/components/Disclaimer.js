@@ -19,6 +19,20 @@ function Disclaimer({ variant = 'banner' }) {
         );
     }
 
+    if (variant === 'minimal') {
+        return (
+            <p style={{ 
+                textAlign: 'center', 
+                fontSize: '0.75rem', 
+                color: '#999', 
+                marginTop: '2rem',
+                padding: '0 1rem',
+            }}>
+                This form collects follow-up information only. Not a substitute for medical advice.
+            </p>
+        );
+    }
+
     return (
         <div className="alert alert-warning">
             <span className="alert-icon">⚠️</span>
