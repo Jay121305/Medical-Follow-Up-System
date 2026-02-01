@@ -9,22 +9,22 @@ import { getDoctorPrescriptions, getDoctorFollowUps } from '../services/api';
 import Loading from '../components/Loading';
 import Disclaimer from '../components/Disclaimer';
 
-const DOCTOR_ID = 'doctor-001';
-
-function DoctorDashboard() {
+function DoctorDashboard({ user }) {
     const navigate = useNavigate();
     const [stats, setStats] = useState({ totalPrescriptions: 0, pendingFollowUps: 0, completedFollowUps: 0, readyForReview: 0 });
     const [recentFollowUps, setRecentFollowUps] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const doctorId = user?.id || 'doctor-001';
+
     useEffect(() => {
         loadDashboardData();
-    }, []);
+    }, [doctorId]);
 
     const loadDashboardData = async () => {
         try {
-            const prescriptionsResult = await getDoctorPrescriptions(DOCTOR_ID);
-            const followUpsResult = await getDoctorFollowUps(DOCTOR_ID);
+            const prescriptionsResult = await getDoctorPrescriptions(doctorId);
+            const followUpsResult = await getDoctorFollowUps(doctorId);
             const prescriptions = prescriptionsResult.data || [];
             const followUps = followUpsResult.data || [];
 
@@ -49,7 +49,10 @@ function DoctorDashboard() {
             <div className="container">
                 <Disclaimer />
                 <div className="d-flex justify-between align-center mb-4">
-                    <h1>Doctor Dashboard</h1>
+                    <div>
+                        <h1>Welcome, Dr. {user?.name || 'Doctor'}</h1>
+                        <p className="text-muted mb-0">{user?.specialization || 'General Practitioner'}</p>
+                    </div>
                     <button className="btn btn-primary" onClick={() => navigate('/doctor/prescriptions/new')}>+ New Prescription</button>
                 </div>
 
@@ -61,9 +64,9 @@ function DoctorDashboard() {
                 </div>
 
                 <div className="grid grid-3 mb-4">
-                    <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/doctor/prescriptions/new')}><div style={{ fontSize: '2rem' }}>📝</div><h4>Create Prescription</h4></div>
-                    <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/doctor/prescriptions')}><div style={{ fontSize: '2rem' }}>📋</div><h4>View Prescriptions</h4></div>
-                    <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/doctor/follow-ups')}><div style={{ fontSize: '2rem' }}>📊</div><h4>Follow-Up Reports</h4></div>
+                    <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/doctor/prescriptions/new')}><div style={{ fontSize: '2rem' }}>📝</div><h4>Create Prescription</h4><p className="text-muted text-sm">Add new prescription with OCR or voice</p></div>
+                    <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/doctor/prescriptions')}><div style={{ fontSize: '2rem' }}>📋</div><h4>View Prescriptions</h4><p className="text-muted text-sm">Manage your prescriptions</p></div>
+                    <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/doctor/follow-ups')}><div style={{ fontSize: '2rem' }}>📊</div><h4>Follow-Up Reports</h4><p className="text-muted text-sm">View patient responses</p></div>
                 </div>
             </div>
         </div>

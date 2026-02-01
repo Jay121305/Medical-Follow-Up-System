@@ -27,7 +27,7 @@
   --color-error: #ef4444;
   --color-error-bg: rgba(239, 68, 68, 0.1);
   
-  /* Neutral Colors */
+  /* Neutral Colors - Dark Mode (Default) */
   --color-bg-primary: #0f172a;
   --color-bg-secondary: #1e293b;
   --color-bg-tertiary: #334155;
@@ -84,6 +84,70 @@
   --transition-slow: 350ms ease;
 }
 
+/* ===== Light Theme ===== */
+[data-theme="light"] {
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f1f5f9;
+  --color-bg-card: #ffffff;
+  
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  
+  --color-border: #e2e8f0;
+  --color-border-light: #cbd5e1;
+  
+  --gradient-card: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+/* Light mode specific overrides */
+[data-theme="light"] .header {
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="light"] .table tr:hover td {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .btn-outline {
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+[data-theme="light"] .logo span {
+  color: var(--color-text-primary);
+}
+
+[data-theme="light"] .nav-link {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="light"] .nav-link:hover,
+[data-theme="light"] .nav-link.active {
+  color: var(--color-primary);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  background: var(--color-bg-tertiary) !important;
+  border: 1px solid var(--color-border) !important;
+  font-size: 1.1rem !important;
+  padding: 0.4rem 0.6rem !important;
+  min-width: auto !important;
+}
+
+.theme-toggle:hover {
+  background: var(--color-bg-secondary) !important;
+  transform: scale(1.05);
+}
+
 /* ===== Reset & Base Styles ===== */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -103,6 +167,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 #root {

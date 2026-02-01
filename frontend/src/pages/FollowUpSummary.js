@@ -62,12 +62,30 @@ function FollowUpSummary() {
                 </div>
 
                 <div className="card mb-3">
-                    <h3 className="mb-2">Prescription Details</h3>
-                    <div className="grid grid-2">
-                        <div><strong>Medicine:</strong> {summary?.prescription?.medicineName}</div>
-                        <div><strong>Dosage:</strong> {summary?.prescription?.dosage}</div>
-                        <div><strong>Duration:</strong> {summary?.prescription?.duration}</div>
-                        <div><strong>Condition:</strong> {summary?.prescription?.condition || 'Not specified'}</div>
+                    <h3 className="mb-2">💊 Prescription</h3>
+                    <div style={{ background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)', padding: '1rem', borderRadius: '8px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+                            <thead>
+                                <tr style={{ background: 'var(--color-bg-secondary)' }}>
+                                    <th style={{ textAlign: 'left', padding: '0.85rem', fontSize: '0.9rem', fontWeight: '600', borderBottom: '2px solid var(--color-border)', width: '40%' }}>Medicine Name</th>
+                                    <th style={{ textAlign: 'left', padding: '0.85rem', fontSize: '0.9rem', fontWeight: '600', borderBottom: '2px solid var(--color-border)' }}>Dosage Instructions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style={{ padding: '0.85rem', fontWeight: '600', color: 'var(--color-primary)', fontSize: '1.05rem', verticalAlign: 'top' }}>
+                                        {summary?.prescription?.medicineName}
+                                    </td>
+                                    <td style={{ padding: '0.85rem', verticalAlign: 'top' }}>
+                                        <div style={{ marginBottom: '0.5rem', fontSize: '1rem' }}>{summary?.prescription?.dosage}</div>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>Duration: {summary?.prescription?.duration}</div>
+                                        {summary?.prescription?.condition && (
+                                            <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>Condition: {summary?.prescription?.condition}</div>
+                                        )}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

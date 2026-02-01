@@ -29,6 +29,13 @@ async function apiCall(endpoint, options = {}) {
 
 // ===== Prescription APIs =====
 
+export async function scanPrescription(imageBase64) {
+    return apiCall('/prescriptions/scan', {
+        method: 'POST',
+        body: JSON.stringify({ image: imageBase64 }),
+    });
+}
+
 export async function createPrescription(prescriptionData) {
     return apiCall('/prescriptions', {
         method: 'POST',

@@ -1,18 +1,29 @@
 /**
  * Home Page
- * Landing page with role selection
+ * Landing page with role-based navigation
  */
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Disclaimer from '../components/Disclaimer';
 
-function HomePage({ onRoleChange }) {
+function HomePage({ user }) {
     const navigate = useNavigate();
 
-    const handleDoctorLogin = () => {
-        onRoleChange('doctor');
-        navigate('/doctor/dashboard');
+    const handleDoctorClick = () => {
+        if (user?.role === 'doctor') {
+            navigate('/doctor/dashboard');
+        } else {
+            navigate('/login');
+        }
+    };
+
+    const handleStaffClick = () => {
+        if (user?.role === 'staff') {
+            navigate('/staff/dashboard');
+        } else {
+            navigate('/login');
+        }
     };
 
     return (
@@ -28,16 +39,28 @@ function HomePage({ onRoleChange }) {
                         A secure, consent-first medical follow-up system that puts patients in control of their health data.
                     </p>
 
-                    <div className="grid grid-2" style={{ maxWidth: '800px', margin: '0 auto' }}>
+                    <div className="grid grid-3" style={{ maxWidth: '1000px', margin: '0 auto' }}>
                         {/* Doctor Card */}
                         <div className="card">
                             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👨‍⚕️</div>
                             <h3 style={{ marginBottom: '0.5rem' }}>For Doctors</h3>
                             <p style={{ marginBottom: '1.5rem' }}>
-                                Create prescriptions, send follow-up requests, and review patient-verified responses.
+                                Create prescriptions, manage medications, and review patient responses.
                             </p>
-                            <button className="btn btn-primary btn-block" onClick={handleDoctorLogin}>
-                                Doctor Dashboard
+                            <button className="btn btn-primary btn-block" onClick={handleDoctorClick}>
+                                {user?.role === 'doctor' ? 'Go to Dashboard' : 'Doctor Login'}
+                            </button>
+                        </div>
+
+                        {/* Staff Card */}
+                        <div className="card">
+                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👩‍💼</div>
+                            <h3 style={{ marginBottom: '0.5rem' }}>For Staff</h3>
+                            <p style={{ marginBottom: '1.5rem' }}>
+                                Send follow-up requests and manage patient communications.
+                            </p>
+                            <button className="btn btn-secondary btn-block" onClick={handleStaffClick}>
+                                {user?.role === 'staff' ? 'Go to Dashboard' : 'Staff Login'}
                             </button>
                         </div>
 
@@ -46,10 +69,10 @@ function HomePage({ onRoleChange }) {
                             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👤</div>
                             <h3 style={{ marginBottom: '0.5rem' }}>For Patients</h3>
                             <p style={{ marginBottom: '1.5rem' }}>
-                                Received an email with an OTP? Verify your identity and complete your follow-up form.
+                                Received an OTP? Verify your identity and complete your follow-up.
                             </p>
                             <button
-                                className="btn btn-secondary btn-block"
+                                className="btn btn-outline btn-block"
                                 onClick={() => navigate('/verify-info')}
                             >
                                 Verify Follow-Up
@@ -65,21 +88,21 @@ function HomePage({ onRoleChange }) {
                                 <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📋</div>
                                 <h4>1. Prescription Created</h4>
                                 <p className="text-sm text-muted">
-                                    Your doctor creates a prescription and stores it securely.
+                                    Doctor uploads prescription via OCR or manual entry.
                                 </p>
                             </div>
                             <div className="card">
-                                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📧</div>
+                                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📱</div>
                                 <h4>2. Follow-Up Request</h4>
                                 <p className="text-sm text-muted">
-                                    You receive an email with a secure OTP to access your follow-up form.
+                                    Staff sends WhatsApp message with secure OTP to patient.
                                 </p>
                             </div>
                             <div className="card">
                                 <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✅</div>
                                 <h4>3. Verify & Submit</h4>
                                 <p className="text-sm text-muted">
-                                    Review AI-generated drafts, make edits, and submit with your consent.
+                                    Patient answers AI-generated questions and submits response.
                                 </p>
                             </div>
                         </div>

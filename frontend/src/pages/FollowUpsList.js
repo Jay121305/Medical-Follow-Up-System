@@ -9,18 +9,18 @@ import { getDoctorFollowUps } from '../services/api';
 import Loading from '../components/Loading';
 import Disclaimer from '../components/Disclaimer';
 
-const DOCTOR_ID = 'doctor-001';
-
-function FollowUpsList() {
+function FollowUpsList({ user }) {
     const navigate = useNavigate();
     const [followUps, setFollowUps] = useState([]);
     const [loading, setLoading] = useState(true);
+    
+    const doctorId = user?.id || 'doctor-001';
 
-    useEffect(() => { loadFollowUps(); }, []);
+    useEffect(() => { loadFollowUps(); }, [doctorId]);
 
     const loadFollowUps = async () => {
         try {
-            const result = await getDoctorFollowUps(DOCTOR_ID);
+            const result = await getDoctorFollowUps(doctorId);
             setFollowUps(result.data || []);
         } catch (err) {
             console.error(err);
