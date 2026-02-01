@@ -174,34 +174,40 @@ router.post('/', async (req, res) => {
         let followUpDetails = null;
 
         if (adverseEventData.patientPhone && missingFields.length > 0) {
-            // Create OTP for follow-up
-            const otp = await createOTP(adverseEventId, 'adverseEvent');
-            
-            // Generate follow-up link
-            const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/adverse-event/${adverseEventId}/follow-up`;
-            
-            // Send OTP via WhatsApp/SMS
-            const sendResult = await sendOTPBoth(
-                adverseEventData.patientPhone,
-                otp,
-                verificationLink,
-                caseId
-            );
-            
-            followUpTriggered = true;
-            followUpDetails = {
-                otp,
-                verificationLink,
-                whatsappSent: sendResult.whatsapp,
-                smsSent: sendResult.sms,
-            };
+            try {
+                // Create OTP for follow-up
+                const otp = await createOTP(adverseEventId, 'adverseEvents');
+                
+                // Generate follow-up link
+                const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/adverse-event/${adverseEventId}/follow-up`;
+                
+                // Send OTP via WhatsApp/SMS
+                const sendResult = await sendOTPBoth(
+                    adverseEventData.patientPhone,
+                    otp,
+                    verificationLink,
+                    caseId
+                );
+                
+                followUpTriggered = true;
+                followUpDetails = {
+                    otp,
+                    verificationLink,
+                    whatsappSent: sendResult.whatsapp,
+                    smsSent: sendResult.sms,
+                };
 
-            // Update case status
-            await db.collection('adverseEvents').doc(adverseEventId).update({
-                status: 'follow_up_sent',
-                followUpSent: true,
-                followUpSentAt: new Date().toISOString(),
-            });
+                // Update case status
+                await db.collection('adverseEvents').doc(adverseEventId).update({
+                    status: 'follow_up_sent',
+                    followUpSent: true,
+                    followUpSentAt: new Date().toISOString(),
+                });
+            } catch (otpError) {
+                console.error('❌ Failed to send OTP for adverse event:', otpError.message);
+                // Continue even if OTP fails - don't block the adverse event creation
+                followUpTriggered = false;
+            }
         }
 
         res.status(201).json({
