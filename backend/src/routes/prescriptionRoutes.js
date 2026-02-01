@@ -10,6 +10,47 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
 const { v4: uuidv4 } = require('uuid');
+const { processPrescriptionImage } = require('../services/ocrService');
+
+/**
+ * POST /api/prescriptions/scan
+ * Scan a prescription image using OCR and return extracted data
+ */
+router.post('/scan', async (req, res) => {
+    try {
+        const { image } = req.body;
+
+        if (!image) {
+            return res.status(400).json({
+                success: false,
+                error: 'Image data is required (base64 string)',
+            });
+        }
+
+        const result = await processPrescriptionImage(image);
+
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                error: result.error,
+                rawText: result.rawText || null,
+            });
+        }
+
+        res.json({
+            success: true,
+            data: result.data,
+            rawText: result.rawText,
+        });
+
+    } catch (error) {
+        console.error('Prescription Scan Error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to process prescription image',
+        });
+    }
+});
 
 /**
  * POST /api/prescriptions
@@ -19,10 +60,12 @@ const { v4: uuidv4 } = require('uuid');
  * - medicineName: Name of the prescribed medicine
  * - dosage: Dosage instructions (e.g., "500mg twice daily")
  * - duration: Treatment duration (e.g., "7 days")
- * - patientEmail: Patient's email address
+ * - patientPhone: Patient's phone number for WhatsApp
  * - doctorId: ID of the prescribing doctor
  * 
  * Optional fields:
+ * - patientName: Patient's name
+ * - patientEmail: Patient's email address (optional now)
  * - condition: Medical condition being treated
  * - notes: Additional notes from doctor
  */
@@ -32,6 +75,8 @@ router.post('/', async (req, res) => {
             medicineName,
             dosage,
             duration,
+            patientPhone,
+            patientName,
             patientEmail,
             doctorId,
             condition,
@@ -39,19 +84,19 @@ router.post('/', async (req, res) => {
         } = req.body;
 
         // Validate required fields
-        if (!medicineName || !dosage || !duration || !patientEmail || !doctorId) {
+        if (!medicineName || !dosage || !duration || !patientPhone || !doctorId) {
             return res.status(400).json({
                 success: false,
-                error: 'Missing required fields: medicineName, dosage, duration, patientEmail, doctorId',
+                error: 'Missing required fields: medicineName, dosage, duration, patientPhone, doctorId',
             });
         }
 
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(patientEmail)) {
+        // Validate phone format (basic validation - at least 10 digits)
+        const phoneDigits = patientPhone.replace(/\D/g, '');
+        if (phoneDigits.length < 10) {
             return res.status(400).json({
                 success: false,
-                error: 'Invalid email format',
+                error: 'Invalid phone number format (minimum 10 digits required)',
             });
         }
 
@@ -64,7 +109,9 @@ router.post('/', async (req, res) => {
             medicineName,
             dosage,
             duration,
-            patientEmail,
+            patientPhone,
+            patientName: patientName || null,
+            patientEmail: patientEmail || null,
             doctorId,
             condition: condition || null,
             notes: notes || null,
@@ -88,6 +135,40 @@ router.post('/', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to create prescription',
+        });
+    }
+});
+
+/**
+ * GET /api/prescriptions/all
+ * Get all prescriptions (for staff dashboard)
+ * Returns prescriptions from all doctors with doctor info
+ */
+router.get('/all', async (req, res) => {
+    try {
+        const snapshot = await db.collection('prescriptions')
+            .orderBy('createdAt', 'desc')
+            .get();
+
+        const prescriptions = [];
+        snapshot.forEach(doc => {
+            prescriptions.push({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt,
+            });
+        });
+
+        res.json({
+            success: true,
+            data: prescriptions,
+        });
+
+    } catch (error) {
+        console.error('Get All Prescriptions Error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch prescriptions',
         });
     }
 });
@@ -159,6 +240,48 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to fetch prescription',
+        });
+    }
+});
+
+/**
+ * PATCH /api/prescriptions/:id
+ * Update patient details for a prescription
+ */
+router.patch('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { patientPhone, patientEmail, patientName } = req.body;
+
+        const doc = await db.collection('prescriptions').doc(id).get();
+
+        if (!doc.exists) {
+            return res.status(404).json({
+                success: false,
+                error: 'Prescription not found',
+            });
+        }
+
+        // Build update object with only provided fields
+        const updates = {};
+        if (patientPhone !== undefined) updates.patientPhone = patientPhone;
+        if (patientEmail !== undefined) updates.patientEmail = patientEmail;
+        if (patientName !== undefined) updates.patientName = patientName;
+        updates.updatedAt = new Date();
+
+        await db.collection('prescriptions').doc(id).update(updates);
+
+        res.json({
+            success: true,
+            message: 'Patient details updated successfully',
+            data: { id, ...updates },
+        });
+
+    } catch (error) {
+        console.error('Update Prescription Error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to update prescription',
         });
     }
 });

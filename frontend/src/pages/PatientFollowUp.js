@@ -11,72 +11,51 @@ import { getFollowUpDrafts, submitFollowUp } from '../services/api';
 import Loading from '../components/Loading';
 import Disclaimer from '../components/Disclaimer';
 
-// MCQ Options for each question (Generic Questions)
+// MCQ Options for each question (Generic Questions - Clinically Focused)
 const GENERIC_QUESTIONS = {
     medicationAdherence: {
-        question: "Did you take the medication as prescribed?",
+        question: "How consistently did you take your medication?",
         options: [
-            { value: "yes_all_doses", label: "Yes, I took all doses as prescribed" },
-            { value: "missed_once", label: "Missed 1 dose" },
-            { value: "missed_few", label: "Missed a few doses (2-3 times)" },
-            { value: "irregular", label: "Was irregular with doses" },
-            { value: "stopped_early", label: "Stopped taking before completing course" },
-            { value: "not_started", label: "Did not take the medication" },
+            { value: "complete", label: "Took all doses as prescribed" },
+            { value: "mostly", label: "Missed 1-2 doses only" },
+            { value: "partial", label: "Took less than half the doses" },
+            { value: "stopped", label: "Stopped or couldn't take the medication" },
         ]
     },
     symptomStatus: {
-        question: "How have your symptoms changed since starting the medication?",
+        question: "Compared to when you started treatment, how are your main symptoms now?",
         options: [
-            { value: "completely_resolved", label: "Symptoms completely resolved" },
-            { value: "much_better", label: "Much better / Significant improvement" },
-            { value: "somewhat_better", label: "Somewhat better / Mild improvement" },
-            { value: "no_change", label: "No change in symptoms" },
-            { value: "slightly_worse", label: "Slightly worse" },
-            { value: "much_worse", label: "Much worse / Symptoms worsened significantly" },
-            { value: "new_symptoms", label: "New symptoms appeared" },
+            { value: "resolved", label: "Symptoms fully resolved" },
+            { value: "improved", label: "Noticeably better but not fully gone" },
+            { value: "unchanged", label: "No significant change" },
+            { value: "worsened", label: "Symptoms have gotten worse" },
         ]
     },
     sideEffects: {
-        question: "Did you experience any side effects from the medication?",
+        question: "Did you experience any concerning reactions to the medication?",
         options: [
-            { value: "none", label: "No side effects experienced" },
-            { value: "mild_temporary", label: "Mild side effects that went away" },
-            { value: "mild_persistent", label: "Mild side effects that persisted" },
-            { value: "moderate", label: "Moderate side effects (affected daily activities)" },
-            { value: "severe", label: "Severe side effects (needed medical attention)" },
-            { value: "allergic_reaction", label: "Allergic reaction (rash, swelling, breathing issues)" },
+            { value: "none", label: "No issues or reactions" },
+            { value: "mild", label: "Minor discomfort that didn't affect daily life" },
+            { value: "moderate", label: "Bothersome effects that affected daily activities" },
+            { value: "severe", label: "Serious reaction requiring medical attention" },
         ]
     },
     completionStatus: {
-        question: "Did you complete the full prescribed course?",
+        question: "What is the current status of your treatment course?",
         options: [
-            { value: "completed_full", label: "Yes, completed the full course" },
-            { value: "still_ongoing", label: "Still taking the medication (course ongoing)" },
-            { value: "stopped_better", label: "Stopped early - felt better" },
-            { value: "stopped_side_effects", label: "Stopped early - due to side effects" },
-            { value: "stopped_no_improvement", label: "Stopped early - no improvement seen" },
-            { value: "stopped_forgot", label: "Stopped early - forgot to continue" },
-            { value: "stopped_other", label: "Stopped early - other reason" },
+            { value: "completed", label: "Completed the full course" },
+            { value: "ongoing", label: "Still taking as prescribed" },
+            { value: "stopped_improved", label: "Stopped early because symptoms improved" },
+            { value: "stopped_problem", label: "Stopped due to side effects or other issues" },
         ]
     },
-    overallSatisfaction: {
-        question: "How satisfied are you with this medication?",
+    overallCondition: {
+        question: "How would you describe your overall health condition right now?",
         options: [
-            { value: "very_satisfied", label: "Very satisfied - worked well" },
-            { value: "satisfied", label: "Satisfied - met expectations" },
-            { value: "neutral", label: "Neutral - neither good nor bad" },
-            { value: "dissatisfied", label: "Dissatisfied - didn't work as expected" },
-            { value: "very_dissatisfied", label: "Very dissatisfied - caused problems" },
-        ]
-    },
-    wouldRecommend: {
-        question: "Would you take this medication again if prescribed?",
-        options: [
-            { value: "yes_definitely", label: "Yes, definitely" },
-            { value: "yes_probably", label: "Yes, probably" },
-            { value: "not_sure", label: "Not sure" },
-            { value: "probably_not", label: "Probably not" },
-            { value: "definitely_not", label: "Definitely not" },
+            { value: "recovered", label: "Feel fully recovered" },
+            { value: "improving", label: "Getting better, recovery in progress" },
+            { value: "same", label: "About the same as before treatment" },
+            { value: "worse", label: "Feeling worse than before" },
         ]
     }
 };
@@ -133,8 +112,7 @@ function PatientFollowUp() {
         symptomStatus: '',
         sideEffects: '',
         completionStatus: '',
-        overallSatisfaction: '',
-        wouldRecommend: '',
+        overallCondition: '',
         additionalNotes: '',
     });
     const [personalizedResponses, setPersonalizedResponses] = useState({});
@@ -188,7 +166,7 @@ function PatientFollowUp() {
         e.preventDefault();
         
         // Validate required generic fields
-        const requiredFields = ['medicationAdherence', 'symptomStatus', 'sideEffects', 'completionStatus'];
+        const requiredFields = ['medicationAdherence', 'symptomStatus', 'sideEffects', 'completionStatus', 'overallCondition'];
         const missingFields = requiredFields.filter(field => !responses[field]);
         
         if (missingFields.length > 0) {
@@ -218,8 +196,7 @@ function PatientFollowUp() {
                 symptomStatus: getOptionLabel('symptomStatus', responses.symptomStatus),
                 sideEffects: getOptionLabel('sideEffects', responses.sideEffects),
                 completionStatus: getOptionLabel('completionStatus', responses.completionStatus),
-                overallSatisfaction: responses.overallSatisfaction ? getOptionLabel('overallSatisfaction', responses.overallSatisfaction) : 'Not answered',
-                wouldRecommend: responses.wouldRecommend ? getOptionLabel('wouldRecommend', responses.wouldRecommend) : 'Not answered',
+                overallCondition: getOptionLabel('overallCondition', responses.overallCondition),
                 additionalNotes: responses.additionalNotes || 'No additional notes',
             };
 
@@ -328,7 +305,7 @@ function PatientFollowUp() {
     if (error) return <div className="page"><div className="container"><div className="alert alert-error">{error}</div></div></div>;
 
     // Calculate progress
-    const requiredGenericFields = ['medicationAdherence', 'symptomStatus', 'sideEffects', 'completionStatus'];
+    const requiredGenericFields = ['medicationAdherence', 'symptomStatus', 'sideEffects', 'completionStatus', 'overallCondition'];
     const answeredGeneric = requiredGenericFields.filter(field => responses[field]).length;
     
     const requiredPersonalizedQuestions = personalizedQuestions.filter(q => q.required);
@@ -408,45 +385,43 @@ function PatientFollowUp() {
                     {/* Required Generic Questions */}
                     <div className="card mb-3">
                         <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
-                            📝 General Questions
+                            📝 Treatment Assessment
                         </h3>
                         
                         {renderMCQQuestion('medicationAdherence', true)}
                         {renderMCQQuestion('symptomStatus', true)}
                         {renderMCQQuestion('sideEffects', true)}
                         {renderMCQQuestion('completionStatus', true)}
+                        {renderMCQQuestion('overallCondition', true)}
                     </div>
 
                     {/* Personalized Questions (if any) */}
                     {personalizedQuestions.length > 0 && (
                         <div className="card mb-3" style={{ border: '2px solid var(--color-primary)', background: 'linear-gradient(135deg, #667eea08 0%, #764ba208 100%)' }}>
                             <h3 style={{ marginBottom: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span>🎯</span> Questions Specific to Your Prescription
+                                <span>🎯</span> Questions Specific to Your Condition
                             </h3>
-                            <p className="text-sm text-muted mb-4">These questions are tailored to your specific medication ({prescription?.medicineName}) and condition.</p>
+                            <p className="text-sm text-muted mb-4">These questions help your doctor assess your specific condition and treatment effectiveness.</p>
                             
                             {personalizedQuestions.map(question => renderPersonalizedQuestion(question))}
                         </div>
                     )}
 
-                    {/* Optional Questions */}
+                    {/* Additional Notes */}
                     <div className="card mb-3">
                         <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
-                            Optional Questions
+                            📋 Additional Information
                         </h3>
                         
-                        {renderMCQQuestion('overallSatisfaction', false)}
-                        {renderMCQQuestion('wouldRecommend', false)}
-
                         <div className="form-group" style={{ marginBottom: '0' }}>
                             <label style={mcqStyles.questionTitle}>
-                                Any additional notes for your doctor? (Optional)
+                                Is there anything else your doctor should know? (Optional)
                             </label>
                             <textarea 
                                 className="form-textarea" 
                                 value={responses.additionalNotes} 
                                 onChange={(e) => handleChange('additionalNotes', e.target.value)} 
-                                placeholder="Share any other details about your experience with this medication..."
+                                placeholder="Describe any new symptoms, concerns, or questions you have about your treatment..."
                                 rows={3}
                                 style={{ resize: 'vertical' }}
                             />

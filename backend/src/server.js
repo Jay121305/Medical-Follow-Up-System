@@ -14,6 +14,7 @@ require('dotenv').config();
 // Import routes
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const followUpRoutes = require('./routes/followUpRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,8 +28,9 @@ app.use(cors({
     credentials: true,
 }));
 
-// Body parsing middleware
-app.use(express.json());
+// Body parsing middleware - increased limit for image uploads (base64)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -46,6 +48,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/follow-ups', followUpRoutes);
 

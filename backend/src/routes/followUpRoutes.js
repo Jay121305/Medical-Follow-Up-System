@@ -9,15 +9,15 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
 const { createOTP, verifyOTP, isOTPVerified } = require('../services/otpService');
-const { generateDraftStatements, generateDoctorSummary } = require('../services/aiService');
+const { generateDraftStatements, generateDoctorSummary, generatePersonalizedQuestions } = require('../services/aiService');
+const { sendOTPWhatsApp, sendOTPSMS, sendOTPBoth } = require('../services/whatsappService');
 const { v4: uuidv4 } = require('uuid');
 
 /**
  * POST /api/follow-ups
  * STEP 3: Doctor initiates a follow-up request
  * 
- * Creates follow-up record and generates OTP
- * Returns data needed for email (sent via EmailJS from frontend)
+ * Creates follow-up record, generates OTP, and sends WhatsApp message from backend
  */
 router.post('/', async (req, res) => {
     try {
@@ -49,12 +49,21 @@ router.post('/', async (req, res) => {
             });
         }
 
+        // Validate patient has phone number for WhatsApp
+        if (!prescription.patientPhone) {
+            return res.status(400).json({
+                success: false,
+                error: 'Patient phone number is required for WhatsApp communication',
+            });
+        }
+
         // Create follow-up document
         const followUpId = uuidv4();
         const followUpData = {
             prescriptionId,
             doctorId,
-            patientEmail: prescription.patientEmail,
+            patientPhone: prescription.patientPhone,
+            patientName: prescription.patientName || null,
             caseId: prescription.caseId,
             status: 'pending_verification', // pending_verification, verified, submitted, ready_for_review, closed
             createdAt: new Date(),
@@ -64,6 +73,14 @@ router.post('/', async (req, res) => {
 
         await db.collection('followUps').doc(followUpId).set(followUpData);
 
+        // Generate personalized questions based on prescription
+        const questionsResult = await generatePersonalizedQuestions(prescription);
+        if (questionsResult.success && questionsResult.questions) {
+            await db.collection('followUps').doc(followUpId).update({
+                personalizedQuestions: questionsResult.questions,
+            });
+        }
+
         // Generate OTP
         const { otp, expiresAt } = await createOTP(followUpId);
 
@@ -72,16 +89,43 @@ router.post('/', async (req, res) => {
             status: 'follow_up_sent',
         });
 
-        // Return data for email (OTP will be sent via EmailJS from frontend)
+        const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify/${followUpId}`;
+        const prescriptionLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/prescription/${prescriptionId}`;
+
+        // Send OTP via WhatsApp AND SMS
+        let whatsappSent = false;
+        let smsSent = false;
+        if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+            const results = await sendOTPBoth({
+                to: prescription.patientPhone,
+                otp,
+                verificationLink,
+                caseId: prescription.caseId,
+                followUpId,
+            });
+            whatsappSent = results.whatsapp.success;
+            smsSent = results.sms.success;
+            if (!whatsappSent) {
+                console.error('WhatsApp send failed:', results.whatsapp.error);
+            }
+            if (!smsSent) {
+                console.error('SMS send failed:', results.sms.error);
+            }
+        }
+
+        // Return data (include OTP only if both failed for manual sharing)
         res.status(201).json({
             success: true,
             data: {
                 followUpId,
-                patientEmail: prescription.patientEmail,
-                otp, // Will be sent via EmailJS
+                patientPhone: prescription.patientPhone,
+                otp: (whatsappSent || smsSent) ? undefined : otp, // Only show OTP if both failed
                 otpExpiresAt: expiresAt,
-                verificationLink: `http://localhost:3000/verify/${followUpId}`,
+                verificationLink,
+                prescriptionLink,
                 caseId: prescription.caseId,
+                whatsappSent,
+                smsSent,
             },
         });
 
@@ -140,7 +184,7 @@ router.post('/:id/verify-otp', async (req, res) => {
 
 /**
  * GET /api/follow-ups/:id/drafts
- * STEP 5: Get AI-generated draft statements
+ * STEP 5: Get AI-generated draft statements and personalized questions
  * 
  * CRITICAL: Only accessible AFTER OTP verification
  */
@@ -167,14 +211,17 @@ router.get('/:id/drafts', async (req, res) => {
         }
 
         const followUpData = followUpDoc.data();
+        const prescriptionInfo = await getPrescriptionInfo(followUpData.prescriptionId);
 
-        // If drafts exist, return them
+        // If drafts exist, return them along with personalized questions
         if (followUpData.aiDrafts) {
             return res.json({
                 success: true,
                 data: {
                     drafts: followUpData.aiDrafts,
-                    prescriptionInfo: await getPrescriptionInfo(followUpData.prescriptionId),
+                    prescriptionInfo,
+                    prescriptionId: followUpData.prescriptionId,
+                    personalizedQuestions: followUpData.personalizedQuestions || [],
                 },
             });
         }
@@ -193,7 +240,9 @@ router.get('/:id/drafts', async (req, res) => {
             success: true,
             data: {
                 drafts: result.drafts,
-                prescriptionInfo: await getPrescriptionInfo(followUpData.prescriptionId),
+                prescriptionInfo,
+                prescriptionId: followUpData.prescriptionId,
+                personalizedQuestions: followUpData.personalizedQuestions || [],
             },
         });
 
