@@ -6,7 +6,7 @@
 <h3 align="center">Next-Generation Medical Follow-Up & Pharmacovigilance System</h3>
 
 <p align="center">
-  <strong>Doctor-Initiated • Patient-Verified • AI-Assisted • Ethically Designed</strong>
+  <strong>Doctor-Initiated • Patient-Verified • AI-Assisted • Consent-Gated</strong>
 </p>
 
 <p align="center">
@@ -19,9 +19,9 @@
 </p>
 
 <p align="center">
+  <a href="#-quick-start">Quick Start</a> •
   <a href="#-features">Features</a> •
   <a href="#-how-it-works">How It Works</a> •
-  <a href="#-tech-stack">Tech Stack</a> •
   <a href="#-installation">Installation</a> •
   <a href="#-api-reference">API Reference</a> •
   <a href="#-security">Security</a>
@@ -31,7 +31,7 @@
 
 ## 📖 About
 
-**NEST 2O** (Next-generation Effective System for Treatment & Outcome Observation) is a comprehensive medical follow-up platform designed to bridge the communication gap between healthcare providers and patients while ensuring regulatory-grade data collection for pharmacovigilance.
+**NEST 2O** (Next-generation Effective System for Treatment & Outcome Observation) is a medical follow-up platform that automates post-prescription patient communication while capturing regulatory-grade adverse event data for pharmacovigilance.
 
 > 💡 **Core Philosophy**: *The doctor initiates, AI assists, the patient verifies, and only consent-gated verified data reaches the doctor. AI reduces effort, never decides truth.*
 
@@ -43,11 +43,93 @@
 | **Karnajeet Gosavi** | Developer |
 | **Archit Bagad** | Developer |
 | **Manas Bagul** | Developer |
-| **Prof. Kalyani Ghuge** | Mentor Faculty |
+| **Prof. Kalyani Ghuge** | Mentor |
+
+---
+
+## ⚡ Quick Start
+
+**Get NEST 2O running in 10 minutes:**
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Jay121305/Medical-Follow-Up-System.git
+cd Medical-Follow-Up-System
+
+# 2. Install dependencies
+cd backend && npm install
+cd ../frontend && npm install
+
+# 3. Configure environment (see Configuration section below)
+
+# 4. Start the application
+# Terminal 1:
+cd backend && npm start    # → http://localhost:5000
+
+# Terminal 2:
+cd frontend && npm start   # → http://localhost:3000
+```
 
 ---
 
 ## ✨ Features
+
+### 🎯 Core Workflow: Adverse Event Follow-Up
+
+The heart of NEST 2O — converting incomplete adverse event reports into complete, regulatory-ready safety cases:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                      ADVERSE EVENT WORKFLOW (8 Steps)                     │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  1️⃣ ADVERSE EVENT OCCURS                                                  │
+│     Patient takes medicine → experiences problem (dizziness, nausea)     │
+│                              │                                            │
+│                              ▼                                            │
+│  2️⃣ ADVERSE EVENT REPORTED                                                │
+│     Simple report: "I felt dizzy after taking the medicine"              │
+│                              │                                            │
+│                              ▼                                            │
+│  3️⃣ SYSTEM CREATES SAFETY CASE                                           │
+│     Links to OCR prescription → auto-fills patient/drug/prescriber data  │
+│                              │                                            │
+│                              ▼                                            │
+│  4️⃣ SYSTEM IDENTIFIES MISSING DATA                                       │
+│     Checks mandatory fields → finds gaps (severity, outcome, etc.)       │
+│                              │                                            │
+│                              ▼                                            │
+│  5️⃣ FOLLOW-UP TRIGGERED AUTOMATICALLY                                    │
+│     SMS/WhatsApp sent with OTP + verification link                       │
+│                              │                                            │
+│                              ▼                                            │
+│  6️⃣ PATIENT ANSWERS 7 SMART QUESTIONS                                    │
+│     Tap-based, conditional, 2-3 minutes max                              │
+│                              │                                            │
+│                              ▼                                            │
+│  7️⃣ COMPLETE SAFETY CASE OBTAINED                                        │
+│     All regulatory fields captured (ICH E2B compliant)                   │
+│                              │                                            │
+│                              ▼                                            │
+│  8️⃣ REGULATORY-READY OUTPUT                                              │
+│     Case ready for safety analysis, signal detection, submission         │
+│                                                                           │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### 📋 The 7 Smart Follow-Up Questions
+
+| # | Question | Regulatory Field |
+|---|----------|------------------|
+| Q1 | When did the reaction start? | Causality assessment |
+| Q2 | What symptoms did you experience? | Seriousness indicators |
+| Q3 | How severe was the reaction? | Severity classification |
+| Q4 | Did you require medical attention? | Serious vs non-serious |
+| Q5 | What action was taken with the medicine? | Dechallenge information |
+| Q6 | What happened to the symptoms? | Outcome + causality |
+| Q7 | Were any other medicines taken? | Confounder assessment |
+
+---
 
 ### 🎯 Smart Prescription Management
 
@@ -78,7 +160,7 @@
 
 ### 🔄 Intelligent Follow-Up System
 
-The heart of NEST 2O - a **9-step verified workflow** that ensures data integrity:
+The **9-step verified workflow** ensures data integrity:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -90,32 +172,23 @@ The heart of NEST 2O - a **9-step verified workflow** that ensures data integrit
 │      │                            │                            │        │
 │      │ 1. Initiate Follow-up      │                            │        │
 │      │ ──────────────────────────>│                            │        │
-│      │                            │                            │        │
 │      │                            │ 2. Generate OTP            │        │
 │      │                            │ ──────────────────────────>│        │
 │      │                            │    (WhatsApp/SMS)          │        │
-│      │                            │                            │        │
 │      │                            │ 3. Patient Verifies OTP    │        │
 │      │                            │ <──────────────────────────│        │
-│      │                            │                            │        │
 │      │                            │ 4. Show Smart Questionnaire│        │
 │      │                            │ ──────────────────────────>│        │
-│      │                            │                            │        │
 │      │                            │ 5. Patient Answers         │        │
 │      │                            │ <──────────────────────────│        │
-│      │                            │                            │        │
 │      │                            │ 6. AI Generates Draft      │        │
 │      │                            │ ──────────────────────────>│        │
-│      │                            │                            │        │
 │      │                            │ 7. Patient Reviews & Edits │        │
 │      │                            │ <──────────────────────────│        │
-│      │                            │                            │        │
 │      │                            │ 8. Explicit Consent ✓      │        │
 │      │                            │ <──────────────────────────│        │
-│      │                            │                            │        │
 │      │ 9. View Summary            │                            │        │
-│      │ <──────────────────────────│                            │        │
-│      │    (Consent-Gated)         │                            │        │
+│      │ <──────────────────────────│    (Consent-Gated)         │        │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -133,32 +206,18 @@ The questionnaire intelligently adapts based on patient responses:
 | ➡️ No Change | 4 | 🟡 Quick Path | Schedule follow-up consultation |
 | ⚠️ Had Problems | 11 | 🔴 Safety Path | Full adverse event capture |
 
-#### Question Flow Diagram
-
 ```
 Q1: How are you feeling after taking the medicine?
     │
     ├── ✅ Fully recovered ──────┐
     ├── 📈 Getting better ──────┼──> 🟢 HAPPY PATH (6 questions)
-    │                           │    Q3: Improvement percentage?
-    │                           │    Q4: When did you notice improvement?
-    │                           │    Q5: Other medications taken?
-    │                           │    Q6: Need further assistance?
+    │                           │    → Improvement %, timeline, other meds
     │
     ├── ➡️ No change ───────────┼──> 🟡 QUICK PATH (4 questions)
-    │                           │    Q3: Symptoms still present?
-    │                           │    Q4: Need follow-up appointment?
+    │                           │    → Symptoms present, need appointment?
     │
     └── ⚠️ Had problems ────────┼──> 🔴 SAFETY PATH (11 questions)
-                                │    Q3: What kind of problem?
-                                │    Q4: When did it start?
-                                │    Q5: What symptoms? (multi-select)
-                                │    Q6: How severe?
-                                │    Q7: Medical attention needed?
-                                │    Q8: Action taken with medicine?
-                                │    Q9: Outcome after action?
-                                │    Q10: Other medications?
-                                │    Q11: Need further assistance?
+                                │    → Full adverse event capture
 ```
 
 ---
@@ -297,72 +356,91 @@ Q1: How are you feeling after taking the medicine?
 
 ### Prerequisites
 
-- **Node.js** 18+ ([Download](https://nodejs.org/))
-- **npm** or **yarn**
-- **Firebase Project** with Firestore enabled
-- **API Keys**: Groq, Google Cloud Vision, Twilio
+| Software | Version | Download |
+|----------|---------|----------|
+| Node.js | 18.x or higher | [nodejs.org](https://nodejs.org) |
+| Git | Latest | [git-scm.com](https://git-scm.com) |
 
-### Quick Start
+### Step 1: Clone Repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/Jay121305/Medical-Follow-Up-System.git
-cd NEST-2O
-
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
+cd Medical-Follow-Up-System
 ```
 
-### Backend Configuration
+### Step 2: Get API Credentials
 
-Create `backend/.env`:
+You need credentials from 4 services:
+
+| Service | Purpose | How to Get |
+|---------|---------|------------|
+| **Firebase** | Database | [Firebase Console](https://console.firebase.google.com) → Create project → Enable Firestore → Project Settings → Service Accounts → Generate new private key |
+| **Google Cloud Vision** | OCR | [Google Cloud Console](https://console.cloud.google.com) → Enable Cloud Vision API → Create Service Account → Download JSON |
+| **Groq API** | AI/LLM | [Groq Console](https://console.groq.com) → Sign up → API Keys → Create new key (starts with `gsk_`) |
+| **Twilio** | WhatsApp | [Twilio.com](https://www.twilio.com) → Create account → Get Account SID + Auth Token → Set up WhatsApp Sandbox |
+
+### Step 3: Configure Backend
+
+1. **Create `.env` file in `backend/` folder:**
 
 ```env
-# Server
+# Server Configuration
 PORT=5000
+JWT_SECRET=your-super-secret-jwt-key-change-this
 
-# Firebase
-GOOGLE_APPLICATION_CREDENTIALS=./google-credentials.json
+# Groq AI (LLaMA 3.3 70B)
+GROQ_API_KEY=gsk_your_actual_groq_api_key_here
 
-# AI Service
-GROQ_API_KEY=your_groq_api_key
+# Twilio (WhatsApp + SMS)
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 
-# Twilio (WhatsApp/SMS)
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_phone
-
-# Email (Optional)
-SMTP_HOST=smtp.gmail.com
-SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_app_password
+# Frontend URL (for CORS)
+FRONTEND_URL=http://localhost:3000
 ```
 
-### Firebase Setup
-
-1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Enable Firestore Database
-3. Generate service account key
-4. Save as `backend/google-credentials.json`
-
-### Running the Application
+2. **Add Google credentials file:**
 
 ```bash
-# Terminal 1: Start Backend
+# Rename your downloaded Firebase/Vision JSON to:
+google-credentials.json
+
+# Place it in the backend folder:
+backend/google-credentials.json
+```
+
+> ⚠️ **Security Warning:** Never commit `.env` or `google-credentials.json` to Git!
+
+### Step 4: Install Dependencies
+
+```bash
+# Backend
+cd backend
+npm install
+
+# Frontend (new terminal)
+cd frontend
+npm install
+```
+
+### Step 5: Start the Application
+
+```bash
+# Terminal 1: Backend (http://localhost:5000)
 cd backend
 npm start
-# Server runs on http://localhost:5000
 
-# Terminal 2: Start Frontend
+# Terminal 2: Frontend (http://localhost:3000)
 cd frontend
 npm start
-# App opens at http://localhost:3000
 ```
+
+### Step 6: Test WhatsApp Integration
+
+1. Go to [Twilio WhatsApp Sandbox](https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn)
+2. Send the join code to **+1 415 523 8886** from your WhatsApp
+3. Now your number can receive test messages
 
 ---
 
@@ -382,13 +460,13 @@ npm start
 | `POST` | `/api/prescriptions` | Create new prescription |
 | `GET` | `/api/prescriptions/doctor/:id` | Get doctor's prescriptions |
 | `GET` | `/api/prescriptions/:id` | Get single prescription |
-| `POST` | `/api/prescriptions/ocr` | Extract text from image |
+| `POST` | `/api/prescriptions/ocr` | Extract text from image (OCR) |
 
 ### Follow-Ups
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/follow-ups` | Initiate follow-up |
+| `POST` | `/api/follow-ups` | Initiate follow-up (sends WhatsApp) |
 | `POST` | `/api/follow-ups/:id/verify-otp` | Verify patient OTP |
 | `GET` | `/api/follow-ups/:id/drafts` | Get AI-generated drafts |
 | `POST` | `/api/follow-ups/:id/submit` | Submit with consent |
@@ -407,7 +485,7 @@ npm start
 
 ## 🔐 Security
 
-### Data Protection Layers
+### Security Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -425,10 +503,10 @@ npm start
 │   └── Session expiration (24h)                                   │
 │                                                                  │
 │   📱 LAYER 3: OTP Verification                                   │
-│   ├── 6-digit secure random OTP                                 │
+│   ├── 4-digit secure random OTP                                 │
 │   ├── 10-minute expiration                                      │
 │   ├── WhatsApp/SMS delivery                                     │
-│   └── Rate limiting (3 attempts)                                │
+│   └── Rate limiting (5 attempts max)                            │
 │                                                                  │
 │   ✅ LAYER 4: Consent Gates                                      │
 │   ├── No data visible until OTP verified                        │
@@ -447,7 +525,7 @@ npm start
 
 | Feature | Implementation | Purpose |
 |---------|---------------|---------|
-| **OTP Enforcement** | 6-digit, 10min expiry | Identity verification |
+| **OTP Enforcement** | 4-digit, 10min expiry | Identity verification |
 | **Consent Gating** | Explicit checkbox | Data sharing control |
 | **Password Security** | bcrypt (12 rounds) | Credential protection |
 | **Token Auth** | JWT with expiry | Stateless authentication |
@@ -455,115 +533,97 @@ npm start
 | **Input Validation** | Server-side sanitization | Injection prevention |
 | **Audit Trail** | Firestore timestamps | Compliance & forensics |
 
+### Security Layers
+
+| Layer | Mechanism | Purpose |
+|-------|-----------|---------|
+| **Network** | HTTPS/TLS 1.2+, Helmet.js, CORS | Encrypt transit, security headers |
+| **Authentication** | JWT tokens, bcrypt (12 rounds) | Stateless auth, secure passwords |
+| **OTP Verification** | 4-digit, 10min expiry, 5 max attempts | Patient identity verification |
+| **Consent Gate** | Explicit checkbox + timestamp | Patient controls data visibility |
+| **AI Safety** | SAFETY_PREFIX on all prompts | Prevent medical advice generation |
+
+### Consent-Gated Data Flow
+
+```
+Patient clicks follow-up link
+        │
+        ▼
+┌─────────────────────────────┐
+│   OTP VERIFICATION GATE     │ ← No data visible until verified
+└─────────────────────────────┘
+        │ [OTP Correct]
+        ▼
+Patient answers 7 questions
+        │
+        ▼
+AI generates draft summary
+        │
+        ▼
+┌─────────────────────────────┐
+│   PATIENT EDIT & REVIEW     │ ← Patient can modify 100% of content
+└─────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────┐
+│   EXPLICIT CONSENT CHECKBOX │ ← Must check to proceed
+└─────────────────────────────┘
+        │ [Consent Given]
+        ▼
+Data becomes visible to Doctor ← ONLY NOW can doctor see responses
+```
+
 ---
 
 ## 📁 Project Structure
 
 ```
-NEST 2O/
-├── 📂 backend/
-│   ├── 📂 src/
-│   │   ├── 📂 config/
-│   │   │   ├── firebase.js         # Firebase Admin SDK setup
-│   │   │   └── groq.js             # Groq AI configuration
-│   │   ├── 📂 routes/
-│   │   │   ├── authRoutes.js       # Authentication endpoints
+Medical-Follow-Up-System/
+├── backend/
+│   ├── src/
+│   │   ├── config/
+│   │   │   ├── firebase.js         # Firebase Admin SDK
+│   │   │   └── groq.js             # Groq AI + SAFETY_PREFIX
+│   │   ├── routes/
+│   │   │   ├── authRoutes.js       # Authentication
 │   │   │   ├── prescriptionRoutes.js
 │   │   │   ├── followUpRoutes.js   # Follow-up workflow
-│   │   │   └── adverseEventRoutes.js # Pharmacovigilance
-│   │   ├── 📂 services/
-│   │   │   ├── aiService.js        # AI draft generation
-│   │   │   ├── ocrService.js       # Google Vision OCR
-│   │   │   ├── otpService.js       # OTP generation/verification
-│   │   │   ├── whatsappService.js  # Twilio WhatsApp
-│   │   │   └── emailService.js     # Email notifications
-│   │   └── server.js               # Express app entry
-│   ├── google-credentials.json     # Firebase service account
-│   ├── .env                        # Environment variables
+│   │   │   └── adverseEventRoutes.js
+│   │   ├── services/
+│   │   │   ├── aiService.js        # LLaMA integration
+│   │   │   ├── ocrService.js       # Cloud Vision OCR
+│   │   │   ├── otpService.js       # OTP generation
+│   │   │   └── whatsappService.js  # Twilio messaging
+│   │   └── server.js               # Express entry point
+│   ├── google-credentials.json     # Firebase/Vision key (gitignored)
+│   ├── .env                        # Environment variables (gitignored)
 │   └── package.json
 │
-├── 📂 frontend/
-│   ├── 📂 public/
-│   │   └── index.html
-│   ├── 📂 src/
-│   │   ├── 📂 components/
-│   │   │   ├── Header.js           # Navigation header
-│   │   │   ├── Loading.js          # Loading spinner
-│   │   │   ├── Disclaimer.js       # Medical disclaimer
-│   │   │   └── OTPInput.js         # OTP input component
-│   │   ├── 📂 pages/
-│   │   │   ├── HomePage.js         # Landing page
-│   │   │   ├── Login.js            # Authentication
-│   │   │   ├── DoctorDashboard.js  # Doctor portal
-│   │   │   ├── StaffDashboard.js   # Staff portal
-│   │   │   ├── NewPrescription.js  # Create prescription
-│   │   │   ├── PatientVerify.js    # OTP verification
-│   │   │   ├── PatientFollowUp.js  # Smart questionnaire
-│   │   │   ├── FollowUpSummary.js  # View summary
-│   │   │   ├── AdverseEventReport.js # Report adverse event
-│   │   │   └── AdverseEventsList.js  # View reports
-│   │   ├── 📂 services/
-│   │   │   ├── api.js              # API client
-│   │   │   └── email.js            # Email utilities
-│   │   ├── App.js                  # Main app component
-│   │   ├── index.js                # React entry point
-│   │   └── index.css               # Global styles
+├── frontend/
+│   ├── src/
+│   │   ├── components/             # Reusable UI components
+│   │   ├── pages/                  # Page components
+│   │   ├── services/api.js         # API client
+│   │   └── App.js                  # Router config
 │   └── package.json
 │
+├── NEST_2O_Technical_Report.html   # Full technical documentation
 ├── SECURITY.md                     # Security documentation
 └── README.md                       # This file
 ```
 
 ---
 
-## 📊 Data Models
+## 🔧 Troubleshooting
 
-### Follow-Up Response Structure
-
-```javascript
-{
-  prescriptionId: "abc123",
-  patientPhone: "+91XXXXXXXXXX",
-  status: "completed",
-  otpVerified: true,
-  consentGiven: true,
-  responses: {
-    overallStatus: "improving",
-    medicationCompleted: true,
-    improvementPercentage: 75,
-    improvementTimeline: "3-5 days",
-    additionalMedications: ["Vitamin C"],
-    needsAssistance: false
-  },
-  aiDraft: "Patient reports 75% improvement...",
-  summary: "...",
-  timestamps: {
-    initiated: "2026-02-01T10:00:00Z",
-    otpVerified: "2026-02-01T10:05:00Z",
-    submitted: "2026-02-01T10:15:00Z"
-  }
-}
-```
-
-### Adverse Event Structure
-
-```javascript
-{
-  patientPhone: "+91XXXXXXXXXX",
-  medicationName: "Drug XYZ",
-  adverseEvent: {
-    description: "Severe headache",
-    onsetTime: "2 hours after dose",
-    severity: "moderate",
-    seriousness: ["required_medical_attention"],
-    symptoms: ["headache", "nausea"],
-    actionTaken: "stopped_medication",
-    outcome: "recovering"
-  },
-  concomitantMedications: ["Aspirin"],
-  reportedAt: "2026-02-01T10:00:00Z"
-}
-```
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Port 5000 already in use | Another process using port | Change PORT in `.env` or kill the process |
+| CORS errors in browser | Frontend URL mismatch | Ensure `FRONTEND_URL` matches your frontend port |
+| Firebase connection failed | Invalid credentials | Check `google-credentials.json` path and content |
+| WhatsApp not received | Sandbox not joined | Send join code to Twilio sandbox first |
+| OCR returns empty | Vision API not enabled | Enable Cloud Vision API in Google Console |
+| AI returns error | Groq API key invalid | Verify `GROQ_API_KEY` starts with `gsk_` |
 
 ---
 
@@ -577,29 +637,14 @@ NEST 2O/
 > - ❌ Medical advice
 > - ❌ Diagnosis
 > - ❌ Treatment recommendations
-> - ❌ Drug interaction warnings
 >
 > **Always consult qualified healthcare providers for medical decisions.**
->
-> All AI-generated content must be reviewed and approved by medical professionals before any clinical use.
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License**.
 
 ---
 
